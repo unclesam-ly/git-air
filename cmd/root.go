@@ -16,6 +16,7 @@ var rootCmd = &cobra.Command{
 	Short: "git-air: 极轻量、极速的 Git 原生 AI 代码评审工具",
 	Long: `git-air 是一个纯 Go 编写的 Git AI 评审利器。
 支持一键评审暂存区、指定 Commit、分支差异或单文件，无缝兼容 Gemini、DeepSeek、Ollama 和 OpenAI。`,
+	Args: cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 

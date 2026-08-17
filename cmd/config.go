@@ -31,34 +31,35 @@ func getConfigPath() (string, error) {
 	return filepath.Join(dir, "config.yaml"), nil
 }
 
-// LoadConfig 读取全局配置（优先使用环境变量，其次读取 yaml 文件）
+// LoadConfig 智能读取配置：
+// 1. 先读取用户全局配置 ~/.git-air/config.yaml (保证 APIKey 等全局生效)
+// 2. 若当前项目存在 .git-air.yaml 或 git-air.yaml，则进行项目级增量覆盖
+// 3. 环境变量最高优先级覆盖
 func LoadConfig() (*AppConfig, error) {
 	cfg := &AppConfig{
 		Provider: "gemini",
 		Model:    "gemini-3.7-flash",
 	}
 
-	// 1. 优先探测当前项目根目录下的配置文件
-	localCandidates := []string{"config.yaml", ".git-air.yaml", ".git-air.yml", "configs/config.yaml"}
-	loaded := false
-
-	for _, name := range localCandidates {
-		if data, err := os.ReadFile(name); err == nil && len(data) > 0 {
+	// 1. 首先加载全局配置 ~/.git-air/config.yaml
+	configPath, err := getConfigPath()
+	if err == nil {
+		if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
 			if err := yaml.Unmarshal(data, cfg); err != nil {
-				return nil, fmt.Errorf("解析配置文件失败: %w", err)
+				// 全局配置错误可输出警告或直接返回错误
+				return nil, fmt.Errorf("解析全局配置文件 [%s] 失败: %w", configPath, err)
 			}
-			loaded = true
-			break
 		}
 	}
 
-	// 2. 如果项目根目录下没有，则回退读取用户全局配置 ~/.git-air/config.yaml
-	if !loaded {
-		configPath, err := getConfigPath()
-		if err == nil {
-			if data, err := os.ReadFile(configPath); err == nil {
-				_ = yaml.Unmarshal(data, cfg)
+	// 2. 检查当前项目是否有专属于 git-air 的配置文件 (.git-air.yaml / git-air.yaml) 进行增量覆盖
+	localCandidates := []string{".git-air.yaml", ".git-air.yml", "git-air.yaml"}
+	for _, name := range localCandidates {
+		if data, err := os.ReadFile(name); err == nil && len(data) > 0 {
+			if err := yaml.Unmarshal(data, cfg); err != nil {
+				return nil, fmt.Errorf("解析项目配置文件 [%s] 失败: %w", name, err)
 			}
+			break
 		}
 	}
 
