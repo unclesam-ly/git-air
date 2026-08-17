@@ -15,18 +15,37 @@
   <a href="https://github.com/unclesam-ly/git-air/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
 </p>
 
+<p align="center">
+  <a href="README.md"><strong>简体中文</strong></a> |
+  <a href="README_EN.md">English</a> |
+  <a href="README_JA.md">日本語</a>
+</p>
+
 ---
 
-## 🌟 设计初衷与定位
+## 🌟 为什么做 git-air？
 
-市面上有许多优秀的云端与 CI/CD 级别的 AI Code Review 平台（如各类 PR 自动审查 Bot），它们在团队协作和远程代码门禁上表现出色。
+### 痛点：AI 写代码一时爽，Review 起来火葬场
 
-**而 `git-air` 的定位是：将审查能力极致前置到开发者的本地终端（Pre-Commit / Local CLI）。**
+现在的开发工作流几乎离不开 AI 辅助（Cursor、Copilot、各种大模型插件）。几秒钟生成上百行代码，写起来确实爽快。
 
-在代码正式 push 或发起 PR 之前，在本地敲一行命令，就能以零延迟、极简的方式先做一轮深度扫描，把潜在的并发隐患、逻辑缺陷与敏感信息拦截在本地，作为开发者最轻量顺手的日常命令行结对编程助手。
+**但这也带来了一个全新的致命痛点：**
+- **“看起来太完美”的视觉欺骗**：AI 生成的代码排版工整、注释漂亮、语法标准，极容易让人产生盲目信任；
+- **生成 AI 的“自恋惯性”**：在同一个对话上下文里，你问写代码的那个 AI *“有没有 Bug”*，它往往带有思维惯性与自恋幻觉，大概率自信满满地回复 *“逻辑完全正确、非常健壮”*；
+- **隐蔽暗坑极难肉眼捕捉**：比如在某个 `if err != nil` 提前返回时漏了解锁（Mutex Leak）、协程内部缺少 `recover`、循环内未释放的连接……这些隐患肉眼一扫极易漏掉。
+
+这导致了一个尴尬的死循环：**AI 负责批量生产代码，人类程序员负责在半夜线上故障时擦屁股。**
+
+---
+
+### 解法：把审查能力极致前置到本地终端（Pre-Commit）
+
+市面上有许多优秀的云端与 CI/CD 级别的代码审查平台，而 **`git-air` 的定位是：在代码正式 commit 或发起 PR 之前，作为你本地终端里完全独立的“第三方审查员”。**
+
+它完全剥离聊天上下文，像一个**坐在你工位旁边、嘴有点损但眼神极毒的资深架构师同事**，只对纯粹的代码变更（`git diff`）进行冷酷挑刺：
 
 - ⚡ **Git 原生极简体验**：无需改变任何工作习惯，在命令行敲 `git air` 即可秒级唤起。
-- 🧠 **全模型自由接入**：开箱即用支持 **Google Gemini、DeepSeek、本地离线 Ollama、OpenAI** 以及任何兼容 OpenAI 协议的自定义端点。
+- 🧠 **全模型自由接入**：开箱即用预置 **Google Gemini、Anthropic Claude、xAI Grok、DeepSeek、本地离线 Ollama、OpenAI** 等全系列模型。
 - 🛡️ **智能降噪过滤**：自动剥离 `go.sum`、`package-lock.json`、`*.pb.go`、`*.gen.go` 等锁文件与自动生成代码，省 Token、防死循环。
 - 🎯 **严谨架构师准则**：直奔主题，聚焦并发竞态、死锁、SQL 注入、空指针、资源泄露，并直接提供修复参考代码。
 - 📋 **团队规范适配（`.airules`）**：在项目根目录放置 `.airules`，AI 自动加载团队专属架构规范并最高优先级执行。
