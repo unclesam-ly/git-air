@@ -1,0 +1,185 @@
+<p align="center">
+  <img src="assets/logo.png" width="180" height="180" alt="git-air logo" />
+</p>
+
+<h1 align="center">git-air 🍃</h1>
+
+<p align="center">
+  <strong>纯 Go 编写、像空气一样轻盈极速的 Git 原生 AI 代码评审工具。</strong><br>
+  <em>A lightweight, lightning-fast, Git-native AI code reviewer written in pure Go.</em>
+</p>
+
+<p align="center">
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat&logo=go" alt="Go Version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+  <a href="https://github.com/unclesam-ly/git-air/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
+</p>
+
+---
+
+## 🌟 设计初衷与定位
+
+市面上有许多优秀的云端与 CI/CD 级别的 AI Code Review 平台（如各类 PR 自动审查 Bot），它们在团队协作和远程代码门禁上表现出色。
+
+**而 `git-air` 的定位是：将审查能力极致前置到开发者的本地终端（Pre-Commit / Local CLI）。**
+
+在代码正式 push 或发起 PR 之前，在本地敲一行命令，就能以零延迟、极简的方式先做一轮深度扫描，把潜在的并发隐患、逻辑缺陷与敏感信息拦截在本地，作为开发者最轻量顺手的日常命令行结对编程助手。
+
+- ⚡ **Git 原生极简体验**：无需改变任何工作习惯，在命令行敲 `git air` 即可秒级唤起。
+- 🧠 **全模型自由接入**：开箱即用支持 **Google Gemini、DeepSeek、本地离线 Ollama、OpenAI** 以及任何兼容 OpenAI 协议的自定义端点。
+- 🛡️ **智能降噪过滤**：自动剥离 `go.sum`、`package-lock.json`、`*.pb.go`、`*.gen.go` 等锁文件与自动生成代码，省 Token、防死循环。
+- 🎯 **严谨架构师准则**：直奔主题，聚焦并发竞态、死锁、SQL 注入、空指针、资源泄露，并直接提供修复参考代码。
+- 📋 **团队规范适配（`.airules`）**：在项目根目录放置 `.airules`，AI 自动加载团队专属架构规范并最高优先级执行。
+- 🪝 **一键 Pre-commit 钩子**：一行命令挂载 Git 提交前自动拦截，在代码上库前把好第一道质量关。
+
+---
+
+## 📦 安装方式
+
+### 方式 1：通过 Go 一键安装（推荐）
+```bash
+go install github.com/unclesam-ly/git-air@latest
+```
+
+### 方式 2：源码编译
+```bash
+git clone https://github.com/unclesam-ly/git-air.git
+cd git-air
+go build -o git-air .
+sudo mv git-air /usr/local/bin/
+```
+
+---
+
+## 🚀 快速上手
+
+### 1. 配置模型与 API Key
+
+`git-air` 原生预置了国内外所有主流大模型的官方端点与推荐模型，只需指定 `--provider` 即可秒级切换：
+
+```bash
+# 1. Google Gemini (推荐：极速且经济)
+git air config set --provider gemini --key "YOUR_KEY"
+
+# 2. Anthropic Claude (Claude-3.7 / 3.5 Sonnet)
+git air config set --provider claude --key "YOUR_KEY" --model anthropic/claude-3.7-sonnet
+
+# 3. xAI Grok (Grok-2 / Grok-3)
+git air config set --provider grok --key "YOUR_KEY" --model grok-2-latest
+
+# 4. DeepSeek (高推理能力 / 深度思考)
+git air config set --provider deepseek --key "YOUR_KEY" --model deepseek-chat
+
+# 5. 硅基流动 (SiliconFlow)
+git air config set --provider siliconflow --key "YOUR_KEY" --model deepseek-ai/DeepSeek-V3
+
+# 6. 通义千问 (Qwen / 阿里百炼)
+git air config set --provider qwen --key "YOUR_KEY" --model qwen-plus
+
+# 7. 智谱 AI (GLM-4)
+git air config set --provider zhipu --key "YOUR_KEY" --model glm-4-plus
+
+# 8. 月之暗面 (Kimi / Moonshot)
+git air config set --provider moonshot --key "YOUR_KEY"
+
+# 9. Groq (极致硬件加速推理)
+git air config set --provider groq --key "YOUR_KEY" --model llama-3.3-70b-versatile
+
+# 10. OpenRouter (全聚合模型网关)
+git air config set --provider openrouter --key "YOUR_KEY"
+
+# 11. 本地 100% 离线隐私模型 (Ollama)
+git air config set --provider ollama --model qwen2.5-coder
+
+# 12. OpenAI 官方 (GPT-4o / o3-mini)
+git air config set --provider openai --key "YOUR_KEY" --model gpt-4o-mini
+```
+
+查看当前配置状态：
+```bash
+git air config get
+```
+
+---
+
+### 2. 常用评审命令
+
+```bash
+# 评审当前已暂存（git add）的代码（默认行为）
+git air
+
+# 评审上一次 Commit 的代码
+git air HEAD~1
+
+# 评审特性分支与主干分支之间的所有差异
+git air main..feature-agent
+
+# 只评审指定文件的改动
+git air internal/service/chat.go
+
+# 临时指定模型或 Key 进行评审
+git air --provider deepseek --model deepseek-chat
+```
+
+---
+
+### 3. 一键安装 Git Pre-commit 拦截钩子
+
+在你的 Git 项目根目录下执行：
+```bash
+git air hook install
+```
+以后团队成员在执行 `git commit` 时，`git-air` 会在终端自动执行审查，若存在阻断性缺陷将自动提醒！
+
+如需卸载钩子：
+```bash
+git air hook uninstall
+```
+
+---
+
+## ⚙️ 配置文件说明
+
+`git-air` 支持多层配置覆盖，优先级从高到低为：
+1. **命令行 Flags**（如 `--key`, `--model`, `--provider`）
+2. **环境变量**（`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`）
+3. **项目级配置**（当前 Git 项目根目录下的 `config.yaml` 或 `.git-air.yaml`）
+4. **全局用户配置**（`~/.git-air/config.yaml`）
+
+### `config.yaml` 示例模板：
+```yaml
+# 模型提供商: gemini, deepseek, ollama, openai, custom
+provider: "gemini"
+
+# API 密钥 (本地 ollama 可留空)
+api_key: "YOUR_API_KEY_HERE"
+
+# 模型名称
+model: "gemini-3.7-flash"
+
+# 自定义端点 (可选)
+# base_url: "https://api.deepseek.com/v1"
+
+# 自定义基础提示词 (可选，留空则使用默认资深架构师准则)
+# custom_prompt: ""
+```
+
+---
+
+## 📋 团队规则定制（`.airules`）
+
+在任何 Git 仓库的根目录下创建一个 `.airules` 文件，`git-air` 在评审时会自动将其作为**团队最高优先级铁律**注入大模型：
+
+```markdown
+# 团队专属开发铁律
+1. 所有 SQL 操作必须下沉至 DAO 层，严禁裸拼 SQL 字符串；
+2. 并发操作共享变量必须加锁或使用原子包（sync/atomic）；
+3. 打开的连接/文件句柄必须紧跟 defer Close() 释放；
+4. 严禁使用下划线 _ 盲目丢弃未处理的 error。
+```
+
+---
+
+## 📄 开源许可证
+
+本项目采用 [MIT 许可证](LICENSE)。欢迎提交 Issue 与 Pull Request！

@@ -1,0 +1,33 @@
+# ==========================================
+# git-air 配置文件 (~/.git-air/config.yaml)
+# ==========================================
+
+# 模型提供商，可选: 
+# - 国际主流: gemini, claude (Anthropic), grok (xAI), openai, groq, openrouter, ollama
+# - 国内主流: deepseek, qwen (通义千问), zhipu (智谱GLM), moonshot (Kimi), siliconflow (硅基流动), doubao (字节豆包), minimax, yi (零一万物)
+# - 自定义端点: custom (支持任何兼容 OpenAI 的第三方/私有化端点)
+provider: "gemini"
+
+# API 密钥 (如果是本地 ollama/lmstudio 可填任意字符或留空)
+api_key: "YOUR_API_KEY_HERE"
+
+# 模型名称 (可选，若留空则自动分配各平台的默认主力模型)
+# gemini: gemini-3.7-flash
+# claude: anthropic/claude-3.7-sonnet
+# grok: grok-2-latest
+# deepseek: deepseek-chat (或 deepseek-reasoner)
+# qwen: qwen-plus (或 qwen2.5-coder-32b-instruct)
+# zhipu: glm-4-plus (或 glm-4-flash)
+# moonshot: moonshot-v1-8k
+# siliconflow: deepseek-ai/DeepSeek-V3
+# openrouter: anthropic/claude-3.7-sonnet
+# groq: llama-3.3-70b-versatile
+# ollama: qwen2.5-coder
+# openai: gpt-4o-mini (或 gpt-4o)
+model: "gemini-3.7-flash"
+
+# 自定义 API 接口地址 (可选，不填默认走对应 Provider 的官方端点)
+# base_url: ""
+
+# 自定义全局评审提示词 (可选，留空则使用内置资深架构师准则)
+custom_prompt: ""

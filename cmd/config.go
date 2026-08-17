@@ -1,0 +1,175 @@
+package cmd
+
+import (
+	"fmt"
+	"git-air/internal/ui"
+	"os"
+	"path/filepath"
+
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+)
+
+// AppConfig 全局配置结构体
+type AppConfig struct {
+	Provider     string `yaml:"provider"`      // gemini, deepseek, ollama, openai, custom
+	APIKey       string `yaml:"api_key"`       // API Key
+	BaseURL      string `yaml:"base_url"`      // 自定义请求地址
+	Model        string `yaml:"model"`         // 模型名称
+	CustomPrompt string `yaml:"custom_prompt"` // 用户自定义的 Base System Prompt
+}
+
+func getConfigPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(home, ".git-air")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "config.yaml"), nil
+}
+
+// LoadConfig 读取全局配置（优先使用环境变量，其次读取 yaml 文件）
+func LoadConfig() (*AppConfig, error) {
+	cfg := &AppConfig{
+		Provider: "gemini",
+		Model:    "gemini-3.7-flash",
+	}
+
+	// 1. 优先探测当前项目根目录下的配置文件
+	localCandidates := []string{"config.yaml", ".git-air.yaml", ".git-air.yml", "configs/config.yaml"}
+	loaded := false
+
+	for _, name := range localCandidates {
+		if data, err := os.ReadFile(name); err == nil && len(data) > 0 {
+			if err := yaml.Unmarshal(data, cfg); err != nil {
+				return nil, fmt.Errorf("解析配置文件失败: %w", err)
+			}
+			loaded = true
+			break
+		}
+	}
+
+	// 2. 如果项目根目录下没有，则回退读取用户全局配置 ~/.git-air/config.yaml
+	if !loaded {
+		configPath, err := getConfigPath()
+		if err == nil {
+			if data, err := os.ReadFile(configPath); err == nil {
+				_ = yaml.Unmarshal(data, cfg)
+			}
+		}
+	}
+
+	// 3. 环境变量最高优先级覆盖
+	if envKey := os.Getenv("GIT_AIR_API_KEY"); envKey != "" {
+		cfg.APIKey = envKey
+	}
+	if envProvider := os.Getenv("GIT_AIR_PROVIDER"); envProvider != "" {
+		cfg.Provider = envProvider
+	}
+	if envModel := os.Getenv("GIT_AIR_MODEL"); envModel != "" {
+		cfg.Model = envModel
+	}
+	if envBaseURL := os.Getenv("GIT_AIR_BASE_URL"); envBaseURL != "" {
+		cfg.BaseURL = envBaseURL
+	}
+
+	return cfg, nil
+}
+
+// SaveConfig 保存配置到 ~/.git-air/config.yaml
+func SaveConfig(cfg *AppConfig) error {
+	configPath, err := getConfigPath()
+	if err != nil {
+		return err
+	}
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(configPath, data, 0600)
+}
+
+// configCmd 配置子命令
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "查看或修改 git-air 全局配置 (~/.git-air/config.yaml)",
+}
+var configSetCmd = &cobra.Command{
+	Use:   "set",
+	Short: "设置全局配置项",
+	Example: `  git air config set --provider gemini --key YOUR_KEY
+  git air config set --provider deepseek --key YOUR_KEY --model deepseek-chat
+  git air config set --provider ollama --model qwen2.5-coder`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := LoadConfig()
+		if err != nil || cfg == nil {
+			cfg = &AppConfig{
+				Provider: "gemini",
+				Model:    "gemini-3.7-flash",
+			}
+		}
+		if p, _ := cmd.Flags().GetString("provider"); p != "" {
+			cfg.Provider = p
+		}
+		if k, _ := cmd.Flags().GetString("key"); k != "" {
+			cfg.APIKey = k
+		}
+		if m, _ := cmd.Flags().GetString("model"); m != "" {
+			cfg.Model = m
+		}
+		if u, _ := cmd.Flags().GetString("base-url"); u != "" {
+			cfg.BaseURL = u
+		}
+		if pr, _ := cmd.Flags().GetString("prompt"); pr != "" {
+			cfg.CustomPrompt = pr
+		}
+		if err := SaveConfig(cfg); err != nil {
+			ui.PrintError("保存配置失败: %v", err)
+			return
+		}
+		ui.PrintSuccess("配置更新成功！")
+	},
+}
+
+var configGetCmd = &cobra.Command{
+	Use:   "get",
+	Short: "查看当前所有配置",
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := LoadConfig()
+		if err != nil || cfg == nil {
+			cfg = &AppConfig{
+				Provider: "gemini",
+				Model:    "gemini-3.7-flash",
+			}
+		}
+		path, _ := getConfigPath()
+		fmt.Printf("配置文件路径: %s\n\n", path)
+		fmt.Printf("Provider:      %s\n", cfg.Provider)
+		fmt.Printf("Model:         %s\n", cfg.Model)
+		fmt.Printf("BaseURL:       %s\n", cfg.BaseURL)
+		maskedKey := "未配置"
+		if len(cfg.APIKey) > 8 {
+			maskedKey = cfg.APIKey[:4] + "..." + cfg.APIKey[len(cfg.APIKey)-4:]
+		}
+		fmt.Printf("APIKey:        %s\n", maskedKey)
+		hasPrompt := "否 (使用默认内置架构师 Prompt)"
+		if cfg.CustomPrompt != "" {
+			hasPrompt = "是 (已自定义)"
+		}
+		fmt.Printf("CustomPrompt:  %s\n", hasPrompt)
+	},
+}
+
+func init() {
+	configSetCmd.Flags().StringP("provider", "p", "", "模型提供商 (gemini, claude, grok, deepseek, qwen, zhipu, moonshot, siliconflow, doubao, minimax, yi, groq, openrouter, ollama, openai)")
+	configSetCmd.Flags().StringP("key", "k", "", "API 密钥")
+	configSetCmd.Flags().StringP("model", "m", "", "模型名称")
+	configSetCmd.Flags().StringP("base-url", "u", "", "自定义 API 地址")
+	configSetCmd.Flags().String("prompt", "", "自定义 Base System Prompt")
+
+	configCmd.AddCommand(configSetCmd)
+	configCmd.AddCommand(configGetCmd)
+}

@@ -1,0 +1,12 @@
+# Binaries
+git-air
+git-air.exe
+dist/
+
+# Local sensitive configs
+.git-air.yaml
+
+# IDEs
+.idea/
+.vscode/
+*.swp
