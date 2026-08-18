@@ -33,7 +33,7 @@ func PrintFooter() {
 // PrintError 打印错误信息
 func PrintError(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Fprintf(os.Stderr, "%s[ERROR]%s %s\n", colorRed, colorReset, msg)
+	_, _ = fmt.Fprintf(os.Stderr, "%s[ERROR]%s %s\n", colorRed, colorReset, msg)
 }
 
 // PrintSuccess 打印成功信息
