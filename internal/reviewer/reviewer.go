@@ -3,7 +3,7 @@ package reviewer
 import (
 	"context"
 	"fmt"
-	"git-air/internal/llm"
+	"github.com/unclesam-ly/git-air/internal/llm"
 	"strings"
 )
 

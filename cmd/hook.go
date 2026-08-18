@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"git-air/internal/git"
-	"git-air/internal/ui"
 	"os"
 	"path/filepath"
 
+	"github.com/unclesam-ly/git-air/internal/git"
+	"github.com/unclesam-ly/git-air/internal/ui"
 	"github.com/spf13/cobra"
 )
 

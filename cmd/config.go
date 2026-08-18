@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"git-air/internal/ui"
 	"os"
 	"path/filepath"
 
+	"github.com/unclesam-ly/git-air/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

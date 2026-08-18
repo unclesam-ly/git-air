@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"context"
-	"git-air/internal/git"
-	"git-air/internal/llm"
-	"git-air/internal/reviewer"
-	"git-air/internal/ui"
 	"os"
 
+	"github.com/unclesam-ly/git-air/internal/git"
+	"github.com/unclesam-ly/git-air/internal/llm"
+	"github.com/unclesam-ly/git-air/internal/reviewer"
+	"github.com/unclesam-ly/git-air/internal/ui"
 	"github.com/spf13/cobra"
 )
 

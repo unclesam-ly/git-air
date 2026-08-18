@@ -1,4 +1,4 @@
-module git-air
+module github.com/unclesam-ly/git-air
 
 go 1.26.6
 

@@ -1,6 +1,6 @@
 package main
 
-import "git-air/cmd"
+import "github.com/unclesam-ly/git-air/cmd"
 
 func main() {
 	cmd.Execute()
