@@ -21,6 +21,12 @@ var rootCmd = &cobra.Command{
 		ctx := cmd.Context()
 
 		// 1. 检查并获取 Diff
+		if flagCached, _ := cmd.Flags().GetBool("cached"); flagCached {
+			args = append([]string{"--cached"}, args...)
+		} else if flagStaged, _ := cmd.Flags().GetBool("staged"); flagStaged {
+			args = append([]string{"--cached"}, args...)
+		}
+
 		diff, err := git.GetDiff(ctx, args...)
 		if err != nil {
 			ui.PrintError("%v", err)
@@ -99,4 +105,6 @@ func init() {
 	rootCmd.Flags().StringP("model", "m", "", "临时指定模型名称")
 	rootCmd.Flags().StringP("provider", "p", "", "临时指定 Provider (gemini, deepseek, ollama)")
 	rootCmd.Flags().String("prompt", "", "临时指定 System Prompt")
+	rootCmd.Flags().Bool("cached", false, "显式审查暂存区（git add）代码")
+	rootCmd.Flags().Bool("staged", false, "显式审查暂存区（git add）代码")
 }

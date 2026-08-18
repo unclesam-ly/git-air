@@ -43,12 +43,11 @@ func LoadConfig() (*AppConfig, error) {
 
 	// 1. 首先加载全局配置 ~/.git-air/config.yaml
 	configPath, err := getConfigPath()
-	if err == nil {
-		if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
-			if err := yaml.Unmarshal(data, cfg); err != nil {
-				// 全局配置错误可输出警告或直接返回错误
-				return nil, fmt.Errorf("解析全局配置文件 [%s] 失败: %w", configPath, err)
-			}
+	if err != nil {
+		// 隐式跳过时，可考虑记录日志或在 verbose 模式下输出
+	} else if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
+		if err := yaml.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("解析全局配置文件 [%s] 失败: %w", configPath, err)
 		}
 	}
 

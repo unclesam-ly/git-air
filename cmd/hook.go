@@ -12,8 +12,7 @@ import (
 const preCommitScript = `#!/bin/sh
 # git-air pre-commit hook
 echo "[git-air] 正在执行 Commit 前代码自动化评审..."
-git-air --cached
-# 如果评审发现阻断性问题，可通过退出码阻断 commit
+git-air
 `
 
 var hookCmd = &cobra.Command{
