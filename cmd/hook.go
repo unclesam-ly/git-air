@@ -12,7 +12,7 @@ import (
 const preCommitScript = `#!/bin/sh
 # git-air pre-commit hook
 echo "[git-air] 正在执行 Commit 前代码自动化评审..."
-git-air
+git-air --staged
 `
 
 var hookCmd = &cobra.Command{
