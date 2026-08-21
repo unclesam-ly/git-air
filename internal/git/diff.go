@@ -43,6 +43,9 @@ func GetDiff(ctx context.Context, args ...string) (string, error) {
 		return "", ErrNotGitRepo
 	}
 
+	repoRoot, _ := GetRepoRoot(ctx)
+	customIgnores := LoadAirIgnore(repoRoot)
+
 	var cmdArgs []string
 	if len(args) == 0 {
 		// 1. 默认先提取暂存区代码 (准备 commit 的代码)
@@ -51,7 +54,7 @@ func GetDiff(ctx context.Context, args ...string) (string, error) {
 			return "", err
 		}
 		if strings.TrimSpace(stagedDiff) != "" {
-			return truncateDiffIfNeeded(FilterDiff(stagedDiff)), nil
+			return truncateDiffIfNeeded(FilterDiff(stagedDiff, customIgnores...)), nil
 		}
 		// 2. 如果暂存区为空，回退提取工作区未暂存的修改
 		cmdArgs = []string{}
@@ -64,7 +67,7 @@ func GetDiff(ctx context.Context, args ...string) (string, error) {
 		return "", err
 	}
 
-	filteredDiff := FilterDiff(rawDiff)
+	filteredDiff := FilterDiff(rawDiff, customIgnores...)
 	if strings.TrimSpace(filteredDiff) == "" {
 		return "", ErrEmptyDiff
 	}

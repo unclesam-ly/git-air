@@ -3,12 +3,13 @@ package cmd
 import (
 	"context"
 	"os"
+	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/unclesam-ly/git-air/internal/git"
 	"github.com/unclesam-ly/git-air/internal/llm"
 	"github.com/unclesam-ly/git-air/internal/reviewer"
 	"github.com/unclesam-ly/git-air/internal/ui"
-	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
@@ -53,10 +54,12 @@ var rootCmd = &cobra.Command{
 
 		// 3. 初始化大模型客户端
 		llmClient, err := llm.NewClient(llm.Config{
-			Provider: cfg.Provider,
-			APIKey:   cfg.APIKey,
-			BaseURL:  cfg.BaseURL,
-			Model:    cfg.Model,
+			Provider:    cfg.Provider,
+			APIKey:      cfg.APIKey,
+			BaseURL:     cfg.BaseURL,
+			Model:       cfg.Model,
+			PriceInput:  cfg.PriceInput,
+			PriceOutput: cfg.PriceOutput,
 		})
 		if err != nil {
 			ui.PrintError("初始化模型失败: %v (提示: 请先执行 'git air config set --key YOUR_KEY')", err)
@@ -76,15 +79,43 @@ var rootCmd = &cobra.Command{
 		// 6. 打印开场横幅并开始流式评审
 		ui.PrintBanner(cfg.Provider, cfg.Model)
 		printer := ui.NewStreamPrinter()
-		_, err = rev.Execute(ctx, diff, true, func(chunk string) {
+		var reviewOutput strings.Builder
+		_, usage, err := rev.Execute(ctx, diff, true, func(chunk string) {
+			reviewOutput.WriteString(chunk)
 			printer.PrintChunk(chunk)
 		})
 		if err != nil {
 			ui.PrintError("\n评审过程中发生错误: %v", err)
-			return
+			os.Exit(1)
+		}
+
+		// 7. 打印 Token 消耗统计
+		if usage != nil {
+			ui.PrintUsage(usage.InputTokens, usage.OutputTokens, usage.EstimateCost())
 		}
 
 		ui.PrintFooter()
+
+		// 8. 门禁阻断检测 (Pre-commit 拦截逻辑)
+		outText := reviewOutput.String()
+		hasBlocker := strings.Contains(outText, "[BLOCKER]") || strings.Contains(outText, "[CRITICAL]")
+		hasReject := strings.Contains(outText, "[REJECT]")
+		hasWarning := strings.Contains(outText, "[WARNING]") || strings.Contains(outText, "[WARN]")
+
+		strict, _ := cmd.Flags().GetBool("strict")
+		noBlock, _ := cmd.Flags().GetBool("no-block")
+
+		if !noBlock {
+			if hasBlocker || hasReject {
+				ui.PrintError("[git-air] 审查未通过：检测到 [BLOCKER] 严重缺陷或 [REJECT] 结论，已拦截提交！")
+				ui.PrintError("修复上述问题后再提交；如需临时跳过可执行 'git commit --no-verify' 或加上 '--no-block'")
+				os.Exit(1)
+			} else if strict && hasWarning {
+				ui.PrintError("[git-air] 严格模式（--strict）生效：检测到 [WARNING] 警告，已拦截提交！")
+				ui.PrintError("请优化上述警告或去掉 --strict 标志。")
+				os.Exit(1)
+			}
+		}
 	},
 }
 
@@ -107,4 +138,6 @@ func init() {
 	rootCmd.Flags().String("prompt", "", "临时指定 System Prompt")
 	rootCmd.Flags().Bool("cached", false, "显式审查暂存区（git add）代码")
 	rootCmd.Flags().Bool("staged", false, "显式审查暂存区（git add）代码")
+	rootCmd.Flags().Bool("strict", false, "严格模式：遇到 WARNING 也会阻断退出")
+	rootCmd.Flags().Bool("no-block", false, "非阻断模式：即使发现 BLOCKER 也不以非零退出码阻断")
 }

@@ -45,11 +45,41 @@
 它完全剥离聊天上下文，像一个**坐在你工位旁边、嘴有点损但眼神极毒的资深架构师同事**，只对纯粹的代码变更（`git diff`）进行冷酷挑刺：
 
 - ⚡ **Git 原生极简体验**：无需改变任何工作习惯，在命令行敲 `git air` 即可秒级唤起。
-- 🧠 **全模型自由接入**：开箱即用预置 **Google Gemini、Anthropic Claude、xAI Grok、DeepSeek、本地离线 Ollama、OpenAI** 等全系列模型。
+- 🧠 **全模型自由接入**：开箱即用预置 **Google Gemini 3.x、Anthropic Claude、xAI Grok、DeepSeek、阿里通义千问、智谱 GLM、月之暗面 Kimi、本地 Ollama、OpenAI** 等全系列模型。
 - 🛡️ **智能降噪过滤**：自动剥离 `go.sum`、`package-lock.json`、`*.pb.go`、`*.gen.go` 等锁文件与自动生成代码，省 Token、防死循环。
 - 🎯 **严谨架构师准则**：直奔主题，聚焦并发竞态、死锁、SQL 注入、空指针、资源泄露，并直接提供修复参考代码。
+- 📊 **Token 消耗与费用实时估算**：实时捕获并统计输入/输出 Token 消耗，内置 2026 最新官方定价表精准核算每次审查成本（本地离线模型自动标注免费）。
 - 📋 **团队规范适配（`.airules`）**：在项目根目录放置 `.airules`，AI 自动加载团队专属架构规范并最高优先级执行。
 - 🪝 **一键 Pre-commit 钩子**：一行命令挂载 Git 提交前自动拦截，在代码上库前把好第一道质量关。
+
+---
+
+## 🖥️ 终端效果演示
+
+```text
+$ git air
+
+[git-air] 代码评审中... (Engine: gemini / gemini-3.7-flash)
+─────────────────────────────────────────────────────────────────
+#### 变更概述
+在用户鉴权模块中引入了 Redis 缓存逻辑，并调整了上下文超时传递机制。
+
+#### 详细审查意见
+- [BLOCKER] internal/service/user.go:45 - 严重安全隐患: 循环体内直接拼接原生 SQL 字符串，存在 SQL 注入风险。
+  // 建议修复方案:
+  db.Where("username = ?", inputName).First(&user)
+
+- [WARNING] internal/service/user.go:82 - 潜在风险: 静默丢弃了 Redis 连接异常，当缓存宕机时可能造成缓存击穿。
+
+- [WARNING] internal/service/user.go:103 - 并发隐患: 提前 return 时漏释放互斥锁（Mutex Leak），高并发下极易引发死锁。
+
+#### 评审结论
+- 结论: [REJECT]
+- 评分: 60 / 100
+
+📊 Token: 输入 1,243 / 输出 412 | ≈ $0.0025
+─────────────────────────────────────────────────────────────────
+```
 
 ---
 
@@ -112,9 +142,12 @@ git air config set --provider ollama --model qwen2.5-coder
 
 # 12. OpenAI 官方 (GPT-4o / o3-mini)
 git air config set --provider openai --key "YOUR_KEY" --model gpt-4o-mini
+
+# 13. 自定义 Token 计费费率 (可选：覆盖内置价格表，单位: 美元/1M Tokens)
+git air config set --price-input 0.75 --price-output 3.75
 ```
 
-查看当前配置状态：
+查看当前配置状态（含自定义费率与脱敏 Key）：
 ```bash
 git air config get
 ```
@@ -148,7 +181,9 @@ git air --provider deepseek --model deepseek-chat
 ```bash
 git air hook install
 ```
-以后团队成员在执行 `git commit` 时，`git-air` 会在终端自动执行审查，若存在阻断性缺陷将自动提醒！
+- **自动门禁阻断**：当审查发现 `[BLOCKER]` 严重缺陷或 `[REJECT]` 评审结论时，`git-air` 会自动以非零退出码**直接拦截并阻断本次 `git commit`**，死守代码质量底线！
+- **严格模式 (`--strict`)**：若希望发现 `[WARNING]` 也强制阻断提交，可使用 `git air --strict`；
+- **临时跳过阻断**：如确需强行提交，可使用 Git 原生命令 `git commit --no-verify` 或附加 `git-air --no-block`。
 
 如需卸载钩子：
 ```bash
@@ -160,7 +195,7 @@ git air hook uninstall
 ## ⚙️ 配置文件说明
 
 `git-air` 支持多层配置覆盖，优先级从高到低为：
-1. **命令行 Flags**（如 `--key`, `--model`, `--provider`）
+1. **命令行 Flags**（如 `--key`, `--model`, `--provider`, `--strict`, `--no-block`）
 2. **环境变量**（`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`）
 3. **项目级配置**（当前 Git 项目根目录下的 `config.yaml` 或 `.git-air.yaml`）
 4. **全局用户配置**（`~/.git-air/config.yaml`）
@@ -181,6 +216,10 @@ model: "gemini-3.7-flash"
 
 # 自定义基础提示词 (可选，留空则使用默认资深架构师准则)
 # custom_prompt: ""
+
+# 自定义模型单价 (可选，单位: 美元/1M Tokens，用于精准核算自定义中转或企业私有接口费用)
+# price_input: 0.75
+# price_output: 3.75
 ```
 
 ---
@@ -199,6 +238,27 @@ model: "gemini-3.7-flash"
 
 ---
 
+## 🛡️ 自定义忽略审查（`.airignore`）
+
+除了内置自动忽略的锁文件与二进制外，你还可以在仓库根目录创建 `.airignore` 文件，自定义排除不需要 AI 评审的文件或目录：
+
+```gitignore
+# 忽略所有文档与原型设计
+docs/
+*.md
+
+# 忽略测试 Mock 与假数据
+tests/mock/
+testdata/
+
+# 忽略私密配置文件
+*.env
+secrets.yaml
+```
+
+---
+
 ## 📄 开源许可证
 
 本项目采用 [MIT 许可证](LICENSE)。欢迎提交 Issue 与 Pull Request！
+

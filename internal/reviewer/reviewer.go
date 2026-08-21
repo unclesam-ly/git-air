@@ -3,8 +3,9 @@ package reviewer
 import (
 	"context"
 	"fmt"
-	"github.com/unclesam-ly/git-air/internal/llm"
 	"strings"
+
+	"github.com/unclesam-ly/git-air/internal/llm"
 )
 
 type Reviewer struct {
@@ -23,18 +24,19 @@ func NewReviewer(client *llm.Client, repoRoot string, customPrompt string) *Revi
 	}
 }
 
-// Execute 执行代码评审
-func (r *Reviewer) Execute(ctx context.Context, diff string, stream bool, onChunk func(chunk string)) (string, error) {
+// Execute 执行代码评审，返回 (result, usage, error)
+func (r *Reviewer) Execute(ctx context.Context, diff string, stream bool, onChunk func(chunk string)) (string, *llm.Usage, error) {
 	if strings.TrimSpace(diff) == "" {
-		return "", fmt.Errorf("diff 内容为空，无需评审")
+		return "", nil, fmt.Errorf("diff 内容为空，无需评审")
 	}
 
 	// 动态组装最终 System Prompt
 	systemPrompt := BuildSystemPrompt(r.customPrompt, r.repoRoot)
 	if stream && onChunk != nil {
-		err := r.client.ReviewStream(ctx, systemPrompt, diff, onChunk)
-		return "", err
+		usage, err := r.client.ReviewStream(ctx, systemPrompt, diff, onChunk)
+		return "", usage, err
 	}
 
-	return r.client.Review(ctx, systemPrompt, diff)
+	result, err := r.client.Review(ctx, systemPrompt, diff)
+	return result, nil, err
 }

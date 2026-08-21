@@ -44,11 +44,41 @@ While there are great cloud/CI-based PR review bots, **`git-air` is designed to 
 Completely isolated from your chat history, it acts like a **grumpy but sharp senior architect sitting beside your desk**, ruthlessly inspecting only raw code changes (`git diff`):
 
 - ⚡ **Git-Native Simplicity**: No workflow changes needed. Just run `git air` in your terminal for instant feedback.
-- 🧠 **Universal Multi-Model Support**: Pre-configured support for **Google Gemini, Anthropic Claude, xAI Grok, DeepSeek, Local Ollama, OpenAI**, and any OpenAI-compatible custom endpoint.
+- 🧠 **Universal Multi-Model Support**: Pre-configured support for **Google Gemini 3.x, Anthropic Claude, xAI Grok, DeepSeek, Qwen, Zhipu GLM, Moonshot Kimi, Local Ollama, OpenAI**, and any OpenAI-compatible endpoint.
 - 🛡️ **Smart Noise Reduction**: Automatically strips out `go.sum`, `package-lock.json`, `*.pb.go`, and lockfiles to save tokens and eliminate review loops.
 - 🎯 **Strict Senior Architect Persona**: Zero corporate fluff. Directly flags concurrency deadlocks, SQL injections, nil dereferences, and resource leaks with copy-paste code patches.
+- 📊 **Real-time Token & Cost Estimation**: Accurately tracks prompt/completion token consumption with built-in official pricing rates (local offline models automatically marked free).
 - 📋 **Team Rules Support (`.airules`)**: Drop an `.airules` file in your repo root, and the AI will prioritize your team-specific guidelines.
 - 🪝 **One-Click Pre-commit Hook**: Mounts as a local Git hook in one command to block dangerous bugs before code is committed.
+
+---
+
+## 🖥️ Terminal Preview
+
+```text
+$ git air
+
+[git-air] Reviewing code... (Engine: gemini / gemini-3.7-flash)
+─────────────────────────────────────────────────────────────────
+#### Change Summary
+Added Redis caching layer to user authentication and refined context propagation.
+
+#### Detailed Findings
+- [BLOCKER] internal/service/user.go:45 - Critical Vulnerability: Direct SQL string concatenation inside loop. Potential SQL injection.
+  // Suggested Fix:
+  db.Where("username = ?", inputName).First(&user)
+
+- [WARNING] internal/service/user.go:82 - Potential Risk: Silently discarding Redis error. May lead to cache stampede.
+
+- [WARNING] internal/service/user.go:103 - Concurrency Issue: Mutex unlock skipped on early return branch. High risk of deadlock.
+
+#### Verdict
+- Status: [REJECT]
+- Score: 60 / 100
+
+📊 Token: Input 1,243 / Output 412 | ≈ $0.0025
+─────────────────────────────────────────────────────────────────
+```
 
 ---
 
@@ -111,9 +141,12 @@ git air config set --provider ollama --model qwen2.5-coder
 
 # 12. OpenAI Official (GPT-4o / o3-mini)
 git air config set --provider openai --key "YOUR_KEY" --model gpt-4o-mini
+
+# 13. Custom Token Pricing (Optional: override default rates, USD/1M tokens)
+git air config set --price-input 0.75 --price-output 3.75
 ```
 
-Check current configuration:
+Check current configuration (including masked keys and custom rates):
 ```bash
 git air config get
 ```
@@ -147,7 +180,9 @@ Install the hook inside any Git repository:
 ```bash
 git air hook install
 ```
-From now on, whenever you run `git commit`, `git-air` will automatically perform a code review in your terminal and warn you of any blocker issues!
+- **Automated Commit Gate**: When `git-air` flags any `[BLOCKER]` issue or outputs a `[REJECT]` verdict, it automatically exits with a non-zero status code, **directly intercepting and blocking `git commit`**!
+- **Strict Mode (`--strict`)**: To block commits even on `[WARNING]` issues, use `git air --strict`;
+- **Bypass Interception**: If you urgently need to bypass the check, use standard Git `git commit --no-verify` or pass `git air --no-block`.
 
 To uninstall:
 ```bash
@@ -159,10 +194,28 @@ git air hook uninstall
 ## ⚙️ Configuration Hierarchy
 
 `git-air` searches for configurations in the following priority order:
-1. **CLI Flags** (`--key`, `--model`, `--provider`, `--prompt`)
+1. **CLI Flags** (`--key`, `--model`, `--provider`, `--prompt`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
 2. **Environment Variables** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`)
 3. **Project Config** (`./config.yaml` or `./.git-air.yaml` in repo root)
 4. **Global User Config** (`~/.git-air/config.yaml`)
+
+### `config.yaml` Example Template:
+```yaml
+# Provider: gemini, claude, grok, deepseek, qwen, zhipu, moonshot, siliconflow, ollama, openai, custom
+provider: "gemini"
+api_key: "YOUR_API_KEY_HERE"
+model: "gemini-3.7-flash"
+
+# Custom Base URL (Optional)
+# base_url: "https://api.deepseek.com/v1"
+
+# Custom System Prompt (Optional)
+# custom_prompt: ""
+
+# Custom Token Pricing (Optional, in USD per 1M tokens)
+# price_input: 0.75
+# price_output: 3.75
+```
 
 ---
 
@@ -180,6 +233,27 @@ Create an `.airules` file in your repository root. `git-air` will automatically 
 
 ---
 
+## 🛡️ Custom Ignore Rules (`.airignore`)
+
+In addition to built-in ignored lockfiles and binaries, create an `.airignore` file in your repository root to exclude specific paths from AI review:
+
+```gitignore
+# Ignore documentation & design specs
+docs/
+*.md
+
+# Ignore test mocks and fixtures
+tests/mock/
+testdata/
+
+# Ignore sensitive config files
+*.env
+secrets.yaml
+```
+
+---
+
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE). Contributions, PRs, and issues are welcome!
+
