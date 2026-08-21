@@ -44,11 +44,41 @@ GitHubなどのCI/CD上で動作するボットも優秀ですが、**`git-air` 
 チャット履歴のコンテキストを一切排除し、まるで**あなたの隣に座る口は悪いが目の鋭いシニアアーキテクト**のように、純粋な差分（`git diff`）だけを厳しくチェックします：
 
 - ⚡ **Gitネイティブな極上の操作性**：いつもの作業フローを崩さず、ターミナルで `git air` と叩くだけで即座に起動。
-- 🧠 **主要モデルを完全網羅**：**Google Gemini、Anthropic Claude、xAI Grok、DeepSeek、ローカルOllama、OpenAI** などを設定なしで即座に切り替え可能。
+- 🧠 **主要モデルを完全網羅**：**Google Gemini 3.x、Anthropic Claude、xAI Grok、DeepSeek、Qwen、智譜 GLM、Kimi、ローカルOllama、OpenAI** などを設定なしで即座に切り替え可能。
 - 🛡️ **スマートなノイズ除去**：`go.sum` や `package-lock.json`、自動生成された `*.pb.go` を自動除外。Token消費を抑え、思考ループを防ぎます。
 - 🎯 **厳格なシニアエンジニア基準**：お世辞や無駄口は一切なし。並行処理の競合、デッドロック、SQLインジェクション、NULLポインタ、リソースリークを指摘し、具体的な修正コードを直接提示します。
+- 📊 **Token消費量と費用のリアルタイム見積もり**：入出力Token数を正確に集計し、各社最新の公式料金表に基づいて実行コストを即座に計算（ローカル完全オフラインモデルは無料表示）。
 - 📋 **チーム規約の読み込み（`.airules`）**：リポジトリ直下に `.airules` を配置するだけで、チーム固有のアーキテクチャ規約を最優先で適用。
 - 🪝 **ワンクリックで Pre-commit フック化**：コマンド1発でGitフックとして登録。危険なコードのコミットを未然にブロックします。
+
+---
+
+## 🖥️ ターミナル実行イメージ
+
+```text
+$ git air
+
+[git-air] コードレビュー中... (Engine: gemini / gemini-3.7-flash)
+─────────────────────────────────────────────────────────────────
+#### 変更概要
+ユーザー認証ハンドラーに Redis キャッシュ層を追加し、Context のタイムアウト伝播を修正。
+
+#### 詳細レビュー結果
+- [BLOCKER] internal/service/user.go:45 - 重大なセキュリティ脆弱性: ループ内で生SQL文字列を直接結合しています。SQLインジェクションのリスクがあります。
+  // 推奨修正コード:
+  db.Where("username = ?", inputName).First(&user)
+
+- [WARNING] internal/service/user.go:82 - 潜在的リスク: Redis 接続エラーを握りつぶしています。キャッシュ障害時にDBへ負荷が集中します。
+
+- [WARNING] internal/service/user.go:103 - 並行処理の欠陥: 早期リターン時に Mutex の Unlock を忘れています（Mutex Leak）。デッドロックの危険性があります。
+
+#### 結論
+- 判定: [REJECT]
+- スコア: 60 / 100
+
+📊 Token: 入力 1,243 / 出力 412 | ≈ $0.0025
+─────────────────────────────────────────────────────────────────
+```
 
 ---
 
@@ -111,9 +141,12 @@ git air config set --provider ollama --model qwen2.5-coder
 
 # 12. OpenAI 公式 (GPT-4o / o3-mini)
 git air config set --provider openai --key "YOUR_KEY" --model gpt-4o-mini
+
+# 13. カスタム Token 料金設定 (任意：組み込み料金表を上書き、単位: 米ドル/1M Tokens)
+git air config set --price-input 0.75 --price-output 3.75
 ```
 
-現在の設定を確認：
+現在の設定を確認（カスタム料金やマスク化Keyを含む）：
 ```bash
 git air config get
 ```
@@ -147,7 +180,9 @@ Git リポジトリ直下で以下を実行：
 ```bash
 git air hook install
 ```
-以降、`git commit` を実行するたびにターミナル上で自動レビューが走り、重大な欠陥があればコミット前に警告を出してくれます！
+- **コミット自動ブロック機能**：レビューで `[BLOCKER]` 重大欠陥や `[REJECT]` 判定が検出された場合、`git-air` は非ゼロの終了コードで**コミット（`git commit`）を自動的に中断・ブロック**します！
+- **厳格モード (`--strict`)**：`[WARNING]` 警告でもコミットをブロックしたい場合は `git air --strict` を使用；
+- **一時的なブロック解除**：緊急でコミットを強制したい場合は、Git 標準の `git commit --no-verify` または `git air --no-block` を付与します。
 
 フックを解除する場合：
 ```bash
@@ -158,10 +193,28 @@ git air hook uninstall
 
 ## ⚙️ 設定の優先順位
 
-1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`)
+1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
 2. **環境変数** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`)
 3. **プロジェクト個別設定** (リポジトリ直下の `./config.yaml` または `./.git-air.yaml`)
 4. **グローバル設定** (`~/.git-air/config.yaml`)
+
+### `config.yaml` 設定ファイル例：
+```yaml
+# プロバイダー: gemini, claude, grok, deepseek, qwen, zhipu, moonshot, siliconflow, ollama, openai, custom
+provider: "gemini"
+api_key: "YOUR_API_KEY_HERE"
+model: "gemini-3.7-flash"
+
+# カスタム API エンドポイント (任意)
+# base_url: "https://api.deepseek.com/v1"
+
+# カスタム System Prompt (任意)
+# custom_prompt: ""
+
+# カスタム Token 料金設定 (任意、単位: 米ドル / 1M Tokens)
+# price_input: 0.75
+# price_output: 3.75
+```
 
 ---
 
@@ -175,6 +228,26 @@ git air hook uninstall
 2. 並行処理で共有変数を扱う場合は、sync.RWMutex または sync/atomic を使用すること；
 3. オープンしたリソース（DB rows、HTTP レスポンス、ファイル）は defer Close() で確実に解放すること；
 4. error をアンダースコア（_ = err）で無条件に無視することを禁止する。
+```
+
+---
+
+## 🛡️ カスタム除外設定（`.airignore`）
+
+組み込みの自動除外（ロックファイルやバイナリ）に加え、リポジトリ直下に `.airignore` を配置することで、任意のファイルやディレクトリをAIレビューから除外できます：
+
+```gitignore
+# ドキュメントや設計書を除外
+docs/
+*.md
+
+# テストモックやダミーデータを除外
+tests/mock/
+testdata/
+
+# 機密設定ファイルを除外
+*.env
+secrets.yaml
 ```
 
 ---

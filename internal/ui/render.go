@@ -30,6 +30,28 @@ func PrintFooter() {
 	fmt.Println(colorGray + strings.Repeat("─", 65) + colorReset)
 }
 
+// PrintUsage 打印 Token 消耗与费用估算
+func PrintUsage(inputTokens, outputTokens int, costUSD float64) {
+	if inputTokens == 0 && outputTokens == 0 {
+		return
+	}
+	costStr := ""
+	if costUSD < 0 {
+		costStr = "费用未知"
+	} else if costUSD == 0 {
+		costStr = "本地免费"
+	} else {
+		costStr = fmt.Sprintf("≈ $%.4f", costUSD)
+	}
+
+	fmt.Printf("\n- %sToken: 输入 %s%d%s / 输出 %s%d%s | %s%s%s\n",
+		colorBold,
+		colorCyan, inputTokens, colorGray,
+		colorCyan, outputTokens, colorGray,
+		colorCyan, costStr, colorReset,
+	)
+}
+
 // PrintError 打印错误信息
 func PrintError(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)

@@ -5,18 +5,20 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/unclesam-ly/git-air/internal/ui"
 	"github.com/spf13/cobra"
+	"github.com/unclesam-ly/git-air/internal/ui"
 	"gopkg.in/yaml.v3"
 )
 
 // AppConfig 全局配置结构体
 type AppConfig struct {
-	Provider     string `yaml:"provider"`      // gemini, deepseek, ollama, openai, custom
-	APIKey       string `yaml:"api_key"`       // API Key
-	BaseURL      string `yaml:"base_url"`      // 自定义请求地址
-	Model        string `yaml:"model"`         // 模型名称
-	CustomPrompt string `yaml:"custom_prompt"` // 用户自定义的 Base System Prompt
+	Provider     string  `yaml:"provider"`               // gemini, deepseek, ollama, openai, custom
+	APIKey       string  `yaml:"api_key"`                // API Key
+	BaseURL      string  `yaml:"base_url"`               // 自定义请求地址
+	Model        string  `yaml:"model"`                  // 模型名称
+	CustomPrompt string  `yaml:"custom_prompt"`          // 用户自定义的 Base System Prompt
+	PriceInput   float64 `yaml:"price_input,omitempty"`  // 自定义输入单价 (每 1M tokens 美元，可选)
+	PriceOutput  float64 `yaml:"price_output,omitempty"` // 自定义输出单价 (每 1M tokens 美元，可选)
 }
 
 func getConfigPath() (string, error) {
@@ -126,6 +128,12 @@ var configSetCmd = &cobra.Command{
 		if pr, _ := cmd.Flags().GetString("prompt"); pr != "" {
 			cfg.CustomPrompt = pr
 		}
+		if pi, _ := cmd.Flags().GetFloat64("price-input"); pi > 0 {
+			cfg.PriceInput = pi
+		}
+		if po, _ := cmd.Flags().GetFloat64("price-output"); po > 0 {
+			cfg.PriceOutput = po
+		}
 		if err := SaveConfig(cfg); err != nil {
 			ui.PrintError("保存配置失败: %v", err)
 			return
@@ -160,6 +168,11 @@ var configGetCmd = &cobra.Command{
 			hasPrompt = "是 (已自定义)"
 		}
 		fmt.Printf("CustomPrompt:  %s\n", hasPrompt)
+		if cfg.PriceInput > 0 || cfg.PriceOutput > 0 {
+			fmt.Printf("CustomPrice:   输入 $%.4f/1M, 输出 $%.4f/1M (已自定义覆盖)\n", cfg.PriceInput, cfg.PriceOutput)
+		} else {
+			fmt.Printf("CustomPrice:   默认 (跟随官方最新价格表)\n")
+		}
 	},
 }
 
@@ -169,6 +182,8 @@ func init() {
 	configSetCmd.Flags().StringP("model", "m", "", "模型名称")
 	configSetCmd.Flags().StringP("base-url", "u", "", "自定义 API 地址")
 	configSetCmd.Flags().String("prompt", "", "自定义 Base System Prompt")
+	configSetCmd.Flags().Float64("price-input", 0, "自定义每 1M 输入 Token 美元价格")
+	configSetCmd.Flags().Float64("price-output", 0, "自定义每 1M 输出 Token 美元价格")
 
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configGetCmd)
