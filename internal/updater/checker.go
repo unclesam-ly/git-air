@@ -12,7 +12,7 @@ import (
 )
 
 // CurrentVersion 当前编译版本号
-const CurrentVersion = "v1.0.5"
+const CurrentVersion = "v1.0.6"
 
 const (
 	githubAPIURL  = "https://api.github.com/repos/unclesam-ly/git-air/releases/latest"

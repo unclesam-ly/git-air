@@ -238,16 +238,41 @@ func NewClient(cfg Config) (*Client, error) {
 	}, nil
 }
 
+// isReasoningModel 判断是否为推理或带有 Beta 限制的模型（这类模型要求 temperature 固定为 1）
+func isReasoningModel(model string) bool {
+	m := strings.ToLower(model)
+	return strings.HasPrefix(m, "o1") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4") ||
+		strings.Contains(m, "reasoner") ||
+		strings.Contains(m, "gpt-5") ||
+		strings.Contains(m, "luna") ||
+		strings.Contains(m, "terra") ||
+		strings.Contains(m, "sol")
+}
+
 // Review 一次性完整返回代码评审结果
 func (c *Client) Review(ctx context.Context, systemPrompt, diff string) (string, error) {
-	resp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+	temp := float32(0.2)
+	if isReasoningModel(c.model) {
+		temp = 1.0
+	}
+
+	req := openai.ChatCompletionRequest{
 		Model: c.model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: systemPrompt},
 			{Role: openai.ChatMessageRoleUser, Content: diff},
 		},
-		Temperature: 0.2, // 代码评审低随机性
-	})
+		Temperature: temp,
+	}
+
+	resp, err := c.client.CreateChatCompletion(ctx, req)
+	// 针对限制了 temperature 的模型，自动降级为 1.0 重试
+	if err != nil && (strings.Contains(strings.ToLower(err.Error()), "temperature") || strings.Contains(strings.ToLower(err.Error()), "beta-limitations")) {
+		req.Temperature = 1.0
+		resp, err = c.client.CreateChatCompletion(ctx, req)
+	}
 
 	if err != nil {
 		return "", fmt.Errorf("代码评审调用失败: %w", err)
@@ -376,18 +401,31 @@ func (u *Usage) EstimateCost() float64 {
 
 // ReviewStream 流式逐字返回评审结果（打字机效果），同时返回 Token 使用量
 func (c *Client) ReviewStream(ctx context.Context, systemPrompt, diff string, onChunk func(chunk string)) (*Usage, error) {
-	stream, err := c.client.CreateChatCompletionStream(ctx, openai.ChatCompletionRequest{
+	temp := float32(0.2)
+	if isReasoningModel(c.model) {
+		temp = 1.0
+	}
+
+	req := openai.ChatCompletionRequest{
 		Model: c.model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: systemPrompt},
 			{Role: openai.ChatMessageRoleUser, Content: diff},
 		},
-		Temperature: 0.2,
+		Temperature: temp,
 		Stream:      true,
 		StreamOptions: &openai.StreamOptions{
 			IncludeUsage: true,
 		},
-	})
+	}
+
+	stream, err := c.client.CreateChatCompletionStream(ctx, req)
+	// 针对限制了 temperature 的模型，自动降级为 1.0 重试
+	if err != nil && (strings.Contains(strings.ToLower(err.Error()), "temperature") || strings.Contains(strings.ToLower(err.Error()), "beta-limitations")) {
+		req.Temperature = 1.0
+		stream, err = c.client.CreateChatCompletionStream(ctx, req)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("创建流式请求失败: %w", err)
 	}
