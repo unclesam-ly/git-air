@@ -464,7 +464,7 @@ func (c *Client) ReviewStream(ctx context.Context, systemPrompt, diff string, on
 		}
 
 		// 捕获最后一个 chunk 中携带的 Usage 信息
-		if response.Usage.TotalTokens > 0 {
+		if response.Usage != nil && response.Usage.TotalTokens > 0 {
 			usage.InputTokens = response.Usage.PromptTokens
 			usage.OutputTokens = response.Usage.CompletionTokens
 		}
