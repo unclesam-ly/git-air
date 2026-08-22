@@ -146,6 +146,9 @@ git air config set --provider openai --key "YOUR_KEY" --model gpt-4o-mini
 
 # 13. 自定义 Token 计费费率 (可选：覆盖内置价格表，单位: 美元/1M Tokens)
 git air config set --price-input 0.75 --price-output 3.75
+
+# 14. 永久设置 Commit Message 默认语言 (可选: auto, zh, en, ja, ko)
+git air config set --commit-lang en
 ```
 
 查看当前配置状态（含自定义费率与脱敏 Key）：
@@ -187,13 +190,18 @@ git air msg
 # 2. 自动暂存所有改动并生成提交（无需手动 git add）
 git air msg -a
 
-# 3. 指定输出自然语言（支持 auto, zh, en, ja, ko）
+# 3. 指定单次输出自然语言（支持 auto, zh, en, ja, ko）
 git air msg -l en    # 生成英文说明（适合 GitHub 开源项目）
 git air msg -l ja    # 生成日语说明
 git air msg -l ko    # 生成韩语说明
 
 # 4. 极速一条龙：自动暂存 + 生成 + 免确认直接提交
 git air msg -a -c
+
+# 5. 永久修改全局默认提交语言（无需每次加 -l 参数）
+git air config set --commit-lang en   # 以后永久默认生成英文
+git air config set --commit-lang ja   # 以后永久默认生成日文
+git air config set --commit-lang auto # 恢复自动跟随系统
 ```
 
 **效果演示：**

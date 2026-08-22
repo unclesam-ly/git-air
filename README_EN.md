@@ -145,6 +145,9 @@ git air config set --provider openai --key "YOUR_KEY" --model gpt-4o-mini
 
 # 13. Custom Token Pricing (Optional: override default rates, USD/1M tokens)
 git air config set --price-input 0.75 --price-output 3.75
+
+# 14. Permanently Set Default Commit Message Language (auto, zh, en, ja, ko)
+git air config set --commit-lang en
 ```
 
 Check current configuration (including masked keys and custom rates):
@@ -186,13 +189,18 @@ git air msg
 # 2. Auto-stage all modified files (no need for manual git add)
 git air msg -a
 
-# 3. Explicitly specify natural language (auto, zh, en, ja, ko)
+# 3. Explicitly specify natural language for one-off run (auto, zh, en, ja, ko)
 git air msg -l en    # English (ideal for open-source repos)
 git air msg -l ja    # Japanese
 git air msg -l ko    # Korean
 
 # 4. Instant one-liner: auto-stage + generate + direct commit
 git air msg -a -c
+
+# 5. Permanently set global default commit language (no need for -l flag)
+git air config set --commit-lang en   # Default to English forever
+git air config set --commit-lang ja   # Default to Japanese forever
+git air config set --commit-lang auto # Reset to auto-detect system locale
 ```
 
 **Terminal Preview:**

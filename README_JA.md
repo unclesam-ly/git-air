@@ -60,37 +60,79 @@ GitHubなどのCI/CD上で動作するボットも優秀ですが、**`git-air` 
 $ git air
 
 [git-air] コードレビュー中... (Engine: gemini / gemini-3.7-flash)
-─────────────────────────────────────────────────────────────────
-#### 変更概要
-ユーザー認証ハンドラーに Redis キャッシュ層を追加し、Context のタイムアウト伝播を修正。
+────────────────────────────────# 13. カスタム Token 料金設定 (任意：組み込み料金表を上書き、単位: 米ドル/1M Tokens)
+git air config set --price-input 0.75 --price-output 3.75
 
-#### 詳細レビュー結果
-- [BLOCKER] internal/service/user.go:45 - 重大なセキュリティ脆弱性: ループ内で生SQL文字列を直接結合しています。SQLインジェクションのリスクがあります。
-  // 推奨修正コード:
-  db.Where("username = ?", inputName).First(&user)
+# 14. コミットメッセージのデフォルト言語を永続設定 (任意: auto, zh, en, ja, ko)
+git air config set --commit-lang ja
+```
 
-- [WARNING] internal/service/user.go:82 - 潜在的リスク: Redis 接続エラーを握りつぶしています。キャッシュ障害時にDBへ負荷が集中します。
-
-- [WARNING] internal/service/user.go:103 - 並行処理の欠陥: 早期リターン時に Mutex の Unlock を忘れています（Mutex Leak）。デッドロックの危険性があります。
-
-#### 結論
-- 判定: [REJECT]
-- スコア: 60 / 100
-
-📊 Token: 入力 1,243 / 出力 412 | ≈ $0.0025
-─────────────────────────────────────────────────────────────────
+現在の設定を確認（カスタム料金やマスク化Keyを含む）：
+```bash
+git air config get
 ```
 
 ---
 
-## 📦 インストール
+### 2. よく使うレビューコマンド
 
-### 方法 1: Go Install（推奨）
 ```bash
-go install github.com/unclesam-ly/git-air@latest
+# 現在ステージングされた（git add済み）変更をレビュー（デフォルト）
+git air
+
+# 直前のコミット内容をレビュー
+git air HEAD~1
+
+# ブランチ間の差分をレビュー
+git air main..feature-agent
+
+# 特定のファイルのみをレビュー
+git air internal/service/chat.go
+
+# 一時的にモデルやProviderを指定して実行
+git air --provider deepseek --model deepseek-chat
 ```
 
-### 方法 2: ソースコードからビルド
+---
+
+### 3. AI コミットメッセージ自動生成 (`git air msg`)
+
+コミットメッセージの作成に悩む必要はもうありません。`git-air` がコードの変更差分を分析し、Conventional Commits 準拠のメッセージを**多言語自動適応**と**自動ステージング**で生成します：
+
+```bash
+# 1. 基本的な使い方：差分を分析して対話型コミット
+git air msg
+
+# 2. 変更ファイルを自動ステージング（git add 不要）
+git air msg -a
+
+# 3. 単発で出力言語を指定（auto, zh, en, ja, ko）
+git air msg -l en    # 英語（オープンソース・国際プロジェクト向け）
+git air msg -l ja    # 日本語
+git air msg -l ko    # 韓国語
+
+# 4. 最速ワンライナー：自動ステージング + 生成 + 即座にコミット
+git air msg -a -c
+
+# 5. グローバルデフォルト言語を永続設定（毎回 -l を付ける必要がなくなります）
+git air config set --commit-lang ja   # 今後常に日本語で生成
+git air config set --commit-lang en   # 今後常に英語で生成
+git air config set --commit-lang auto # システム言語への自動追従に戻す
+```
+
+**実行イメージ：**
+```text
+$ git air msg -l ja
+[git-air] Conventional Commit Message を生成中... (Language: 日本語 / Engine: gemini-3.7-flash)
+─────────────────────────────────────────────────────────────────
+feat(auth): Redisキャッシュを追加し、Mutexのデッドロックを修正
+
+- ユーザー認証ハンドラーに Redis トークンキャッシュ層を導入
+- 早期リターン時に Mutex の Unlock が漏れる並行処理のバグを修正
+─────────────────────────────────────────────────────────────────
+? このメッセージで直接 git commit を実行しますか？[Y/n]: y
+[SUCCESS] コードのコミットに成功しました！🎉
+```スコードからビルド
 ```bash
 git clone https://github.com/unclesam-ly/git-air.git
 cd git-air
@@ -145,6 +187,9 @@ git air config set --provider openai --key "YOUR_KEY" --model gpt-4o-mini
 
 # 13. カスタム Token 料金設定 (任意：組み込み料金表を上書き、単位: 米ドル/1M Tokens)
 git air config set --price-input 0.75 --price-output 3.75
+
+# 14. コミットメッセージのデフォルト言語を永続設定 (任意: auto, zh, en, ja, ko)
+git air config set --commit-lang ja
 ```
 
 現在の設定を確認（カスタム料金やマスク化Keyを含む）：
@@ -186,13 +231,18 @@ git air msg
 # 2. 変更ファイルを自動ステージング（git add 不要）
 git air msg -a
 
-# 3. 出力言語を明示的に指定（auto, zh, en, ja, ko）
+# 3. 単発で出力言語を指定（auto, zh, en, ja, ko）
 git air msg -l en    # 英語（オープンソース・国際プロジェクト向け）
 git air msg -l ja    # 日本語
 git air msg -l ko    # 韓国語
 
 # 4. 最速ワンライナー：自動ステージング + 生成 + 即座にコミット
 git air msg -a -c
+
+# 5. グローバルデフォルト言語を永続設定（毎回 -l を付ける必要がなくなります）
+git air config set --commit-lang ja   # 今後常に日本語で生成
+git air config set --commit-lang en   # 今後常に英語で生成
+git air config set --commit-lang auto # システム言語への自動追従に戻す
 ```
 
 **実行イメージ：**
