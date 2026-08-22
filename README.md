@@ -178,21 +178,36 @@ git air --provider deepseek --model deepseek-chat
 
 ### 3. AI 智能生成规范 Commit Message (`git air msg`)
 
-写代码一时爽，写 Commit 抓耳挠腮？`git-air` 会根据你的暂存区改动，自动生成符合国际 Conventional Commits 规范的提交说明，并支持**多语言智能自适应**：
+写代码一时爽，写 Commit 抓耳挠腮？`git-air` 会根据你的代码改动，自动生成符合国际 Conventional Commits 规范的精炼提交说明，并支持**中/英/日/韩多语言智能自适应**与**自动暂存**：
 
 ```bash
-# 1. 自动根据系统语言生成并交互式确认提交
+# 1. 基础用法：分析暂存区代码并交互式确认提交
 git air msg
 
-# 2. 生成英文提交说明（适合开源或国际化项目）
-git air msg -l en
+# 2. 自动暂存所有改动并生成提交（无需手动 git add）
+git air msg -a
 
-# 3. 生成日语 / 韩语提交说明
-git air msg -l ja
-git air msg -l ko
+# 3. 指定输出自然语言（支持 auto, zh, en, ja, ko）
+git air msg -l en    # 生成英文说明（适合 GitHub 开源项目）
+git air msg -l ja    # 生成日语说明
+git air msg -l ko    # 生成韩语说明
 
-# 4. 生成后无需确认直接执行 git commit
-git air msg -c
+# 4. 极速一条龙：自动暂存 + 生成 + 免确认直接提交
+git air msg -a -c
+```
+
+**效果演示：**
+```text
+$ git air msg -l zh
+[git-air] 正在生成 Conventional Commit Message... (Language: 简体中文 / Engine: gemini-3.7-flash)
+─────────────────────────────────────────────────────────────────
+feat(auth): 引入 Redis 缓存并修复 Mutex 死锁隐患
+
+- 在用户认证模块新增 Redis Token 缓存机制
+- 修复提前 return 时未释放互斥锁的并发隐患
+─────────────────────────────────────────────────────────────────
+? 是否直接以此信息执行 git commit？[Y/n]: y
+[SUCCESS] 代码提交成功！🎉
 ```
 
 ---

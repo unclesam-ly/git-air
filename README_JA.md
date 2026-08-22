@@ -177,21 +177,36 @@ git air --provider deepseek --model deepseek-chat
 
 ### 3. AI コミットメッセージ自動生成 (`git air msg`)
 
-コミットメッセージの作成に悩む必要はもうありません。`git-air` がステージングされた差分を分析し、Conventional Commits 準拠のメッセージを**多言語自動適応**で生成します：
+コミットメッセージの作成に悩む必要はもうありません。`git-air` がコードの変更差分を分析し、Conventional Commits 準拠のメッセージを**多言語自動適応**と**自動ステージング**で生成します：
 
 ```bash
-# 1. システム言語を自動検出して生成 & 対話型コミット
+# 1. 基本的な使い方：差分を分析して対話型コミット
 git air msg
 
-# 2. 英語で生成（オープンソース・国際プロジェクト向け）
-git air msg -l en
+# 2. 変更ファイルを自動ステージング（git add 不要）
+git air msg -a
 
-# 3. 日本語 / 韓国語で生成
-git air msg -l ja
-git air msg -l ko
+# 3. 出力言語を明示的に指定（auto, zh, en, ja, ko）
+git air msg -l en    # 英語（オープンソース・国際プロジェクト向け）
+git air msg -l ja    # 日本語
+git air msg -l ko    # 韓国語
 
-# 4. 確認なしで直接 git commit を実行
-git air msg -c
+# 4. 最速ワンライナー：自動ステージング + 生成 + 即座にコミット
+git air msg -a -c
+```
+
+**実行イメージ：**
+```text
+$ git air msg -l ja
+[git-air] Conventional Commit Message を生成中... (Language: 日本語 / Engine: gemini-3.7-flash)
+─────────────────────────────────────────────────────────────────
+feat(auth): Redisキャッシュを追加し、Mutexのデッドロックを修正
+
+- ユーザー認証ハンドラーに Redis トークンキャッシュ層を導入
+- 早期リターン時に Mutex の Unlock が漏れる並行処理のバグを修正
+─────────────────────────────────────────────────────────────────
+? このメッセージで直接 git commit を実行しますか？[Y/n]: y
+[SUCCESS] コードのコミットに成功しました！🎉
 ```
 
 ---

@@ -177,19 +177,36 @@ git air --provider deepseek --model deepseek-chat
 
 ### 3. AI-Powered Commit Message Generation (`git air msg`)
 
-Struggling to write concise commit messages? `git-air` inspects your staged changes and crafts a clean Conventional Commits message with **automatic language detection**:
+Struggling to write concise commit messages? `git-air` inspects your code changes and automatically crafts a clean Conventional Commits message with **auto-language adaptation** and **auto-staging**:
 
 ```bash
-# 1. Generate based on your system locale & interactively commit
+# 1. Basic usage: analyze staged changes & interactively commit
 git air msg
 
-# 2. Explicitly specify target language (e.g. English, Japanese, Korean)
-git air msg -l en
-git air msg -l ja
-git air msg -l ko
+# 2. Auto-stage all modified files (no need for manual git add)
+git air msg -a
 
-# 3. Generate and directly commit without confirmation
-git air msg -c
+# 3. Explicitly specify natural language (auto, zh, en, ja, ko)
+git air msg -l en    # English (ideal for open-source repos)
+git air msg -l ja    # Japanese
+git air msg -l ko    # Korean
+
+# 4. Instant one-liner: auto-stage + generate + direct commit
+git air msg -a -c
+```
+
+**Terminal Preview:**
+```text
+$ git air msg -l en
+[git-air] Generating Conventional Commit Message... (Language: English / Engine: gemini-3.7-flash)
+─────────────────────────────────────────────────────────────────
+feat(auth): add Redis token caching and fix mutex deadlock
+
+- Introduce Redis caching layer for user authentication
+- Fix concurrency bug where mutex was not unlocked on early return
+─────────────────────────────────────────────────────────────────
+? Execute git commit with this message? [Y/n]: y
+[SUCCESS] Code committed successfully! 🎉
 ```
 
 ---
