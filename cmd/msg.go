@@ -103,7 +103,10 @@ var msgCmd = &cobra.Command{
 
 		if flagCommit {
 			if flagAll {
-				_ = git.StageAll(ctx)
+				if err := git.StageAll(ctx); err != nil {
+					ui.PrintError("自动暂存失败: %v", err)
+					return
+				}
 			}
 			executeGitCommit(ctx, commitMsg)
 			return
