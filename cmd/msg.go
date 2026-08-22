@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -96,29 +97,55 @@ var msgCmd = &cobra.Command{
 		fmt.Printf("\033[1;32m%s\033[0m\n", commitMsg)
 		fmt.Println("\033[0;90m" + strings.Repeat("─", 65) + "\033[0m")
 
-		// 6. 是否自动执行提交
-		autoCommit, _ := cmd.Flags().GetBool("commit")
-		if autoCommit {
-			executeGitCommit(commitMsg)
+		// 6. 是否自动暂存与提交
+		flagAll, _ := cmd.Flags().GetBool("all")
+		flagCommit, _ := cmd.Flags().GetBool("commit")
+
+		if flagCommit {
+			if flagAll {
+				_ = git.StageAll(ctx)
+			}
+			executeGitCommit(ctx, commitMsg)
+			return
+		}
+
+		// 检查暂存区状态
+		hasStaged, _ := git.HasStagedChanges(ctx)
+		reader := bufio.NewReader(os.Stdin)
+
+		if !hasStaged && !flagAll {
+			fmt.Print("? 检测到改动尚未暂存 (unstaged)，是否自动暂存并提交 (git add -A)？[Y/n]: ")
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(strings.ToLower(input))
+
+			if input == "" || input == "y" || input == "yes" {
+				if err := git.StageAll(ctx); err != nil {
+					ui.PrintError("自动暂存失败: %v", err)
+					return
+				}
+				executeGitCommit(ctx, commitMsg)
+			} else {
+				fmt.Println("\033[0;90m已跳过提交。请执行 'git add <文件>' 暂存修改后再提交。\033[0m")
+			}
 			return
 		}
 
 		// 交互式询问是否直接提交
 		fmt.Print("? 是否直接以此信息执行 git commit？[Y/n]: ")
-		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(strings.ToLower(input))
 
 		if input == "" || input == "y" || input == "yes" {
-			executeGitCommit(commitMsg)
+			executeGitCommit(ctx, commitMsg)
 		} else {
 			fmt.Println("\033[0;90m已跳过提交。你可以复制上方内容手动提交。\033[0m")
 		}
 	},
 }
 
-func executeGitCommit(msg string) {
-	cmd := exec.Command("git", "commit", "-m", msg)
+func executeGitCommit(ctx context.Context, msg string) {
+	cmd := exec.CommandContext(ctx, "git", "commit", "-m", msg)
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -130,6 +157,7 @@ func executeGitCommit(msg string) {
 
 func init() {
 	msgCmd.Flags().StringP("lang", "l", "", "生成语言 (auto, zh, en, ja, ko)")
+	msgCmd.Flags().BoolP("all", "a", false, "自动暂存所有已修改的文件 (git add -A)")
 	msgCmd.Flags().BoolP("commit", "c", false, "生成后无需确认直接执行 git commit")
 	msgCmd.Flags().StringP("key", "k", "", "临时指定 API Key")
 	msgCmd.Flags().StringP("model", "m", "", "临时指定模型名称")

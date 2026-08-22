@@ -32,6 +32,21 @@ func GetRepoRoot(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// HasStagedChanges 检查当前 Git 暂存区是否有待提交的文件改动
+func HasStagedChanges(ctx context.Context) (bool, error) {
+	stagedDiff, err := execGitDiff(ctx, "--cached")
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(stagedDiff) != "", nil
+}
+
+// StageAll 执行 git add -A 暂存当前所有改动
+func StageAll(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx, "git", "add", "-A")
+	return cmd.Run()
+}
+
 const maxDiffSize = 300 * 1024 // 限制最大 300KB Diff，避免打爆上下文与 OOM
 
 // GetDiff 提取并过滤 Git 代码差异
