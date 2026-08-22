@@ -65,80 +65,46 @@ $ git air
 ユーザー認証ハンドラーに Redis キャッシュ層を追加し、Context のタイムアウト伝播を修正。
 
 #### 詳細レビュー結果
-- [BLOCKER] internal/service/user.go:45 - 重大なセキュリティ�# 特定のファイルのみをレビュー
-git air internal/service/chat.go
+- [BLOCKER] internal/service/user.go:45 - 重大なセキュリティ脆弱性: ループ内で生SQL文字列を直接結合しています。SQLインジェクションのリスクがあります。
+  // 推奨修正コード:
+  db.Where("username = ?", inputName).First(&user)
 
-# 一時的にモデルやProviderを指定して実行
-git air --provider deepseek --model deepseek-chat
+- [WARNING] internal/service/user.go:82 - 潜在的リスク: Redis 接続エラーを握りつぶしています。キャッシュ障害時にDBへ負荷が集中します。
+
+- [WARNING] internal/service/user.go:103 - 並行処理の欠陥: 早期リターン時に Mutex の Unlock を忘れています（Mutex Leak）。デッドロックの危険性があります。
+
+#### 結論
+- 判定: [REJECT]
+- スコア: 60 / 100
+
+📊 Token: 入力 1,243 / 出力 412 | ≈ $0.0025
+─────────────────────────────────────────────────────────────────
 ```
 
 ---
 
-### 3. AI コミットメッセージ自動生成 (`git air msg`)
+## 📦 インストール
 
-コミットメッセージの作成に悩む必要はもうありません。`git-air` がステージングされた差分を分析し、Conventional Commits 準拠のメッセージを**多言語自動適応**で生成します：
-
+### 方法 1: Go Install（推奨）
 ```bash
-# 1. システム言語を自動検出して生成 & 対話型コミット
-git air msg
+go install github.com/unclesam-ly/git-air@latest
+```
 
-# 2. 英語で生成（オープンソース・国際プロジェクト向け）
-git air msg -l en
-
-# 3. 日本語 / 韓国語で生成
-git air msg -l ja
-git air msg -l ko
-
-# 4. 確認なしで直接 git commit を実行
-git air msg -c
+### 方法 2: ソースコードからビルド
+```bash
+git clone https://github.com/unclesam-ly/git-air.git
+cd git-air
+go build -o git-air .
+sudo mv git-air /usr/local/bin/
 ```
 
 ---
 
-### 4. ワンタッチで Pre-commit フックを登録
+## 🚀 クイックスタート
 
-Git リポジトリ直下で以下を実行：
-```bash
-git air hook install
-```
-- **コミット自動ブロック機能**：レビューで `[BLOCKER]` 重大欠陥や `[REJECT]` 判定が検出された場合、`git-air` は非ゼロの終了コードで**コミット（`git commit`）を自動的に中断・ブロック**します！
-- **厳格モード (`--strict`)**：`[WARNING]` 警告でもコミットをブロックしたい場合は `git air --strict` を使用；
-- **一時的なブロック解除**：緊急でコミットを強制したい場合は、Git 標準の `git commit --no-verify` または `git air --no-block` を付与します。
+### 1. モデルと API Key の設定
 
-フックを解除する場合：
-```bash
-git air hook uninstall
-```
-
----
-
-## ⚙️ 設定の優先順位
-
-1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`, `--lang`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
-2. **環境変数** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`, `GIT_AIR_COMMIT_LANG`)
-3. **プロジェクト個別設定** (リポジトリ直下の `./config.yaml` または `./.git-air.yaml`)
-4. **グローバル設定** (`~/.git-air/config.yaml`)
-
-### `config.yaml` 設定ファイル例：
-```yaml
-# プロバイダー: gemini, claude, grok, deepseek, qwen, zhipu, moonshot, siliconflow, ollama, openai, custom
-provider: "gemini"
-api_key: "YOUR_API_KEY_HERE"
-model: "gemini-3.7-flash"
-
-# カスタム API エンドポイント (任意)
-# base_url: "https://api.deepseek.com/v1"
-
-# カスタム System Prompt (任意)
-# custom_prompt: ""
-
-# カスタム Token 料金設定 (任意、単位: 米ドル / 1M Tokens)
-# price_input: 0.75
-# price_output: 3.75
-
-# AI コミットメッセージ言語設定 (任意: auto, zh, en, ja, ko)
-# commit_lang: "auto"
-```LLMのエンドポイントと推奨モデルを標準プリセットしています。`--provider` を指定するだけで簡単に切り替えられます：
+`git-air` は国内外の主要LLMのエンドポイントと推奨モデルを標準プリセットしています。`--provider` を指定するだけで簡単に切り替えられます：
 
 ```bash
 # 1. Google Gemini (推奨: 高速・低コスト)
@@ -209,7 +175,28 @@ git air --provider deepseek --model deepseek-chat
 
 ---
 
-### 3. ワンタッチで Pre-commit フックを登録
+### 3. AI コミットメッセージ自動生成 (`git air msg`)
+
+コミットメッセージの作成に悩む必要はもうありません。`git-air` がステージングされた差分を分析し、Conventional Commits 準拠のメッセージを**多言語自動適応**で生成します：
+
+```bash
+# 1. システム言語を自動検出して生成 & 対話型コミット
+git air msg
+
+# 2. 英語で生成（オープンソース・国際プロジェクト向け）
+git air msg -l en
+
+# 3. 日本語 / 韓国語で生成
+git air msg -l ja
+git air msg -l ko
+
+# 4. 確認なしで直接 git commit を実行
+git air msg -c
+```
+
+---
+
+### 4. ワンタッチで Pre-commit フックを登録
 
 Git リポジトリ直下で以下を実行：
 ```bash
@@ -226,10 +213,24 @@ git air hook uninstall
 
 ---
 
+### 5. バージョン確認とワンクリック自動更新 (`git air update`)
+
+`git-air` には**軽量な24時間サイレント更新検出機能**が組み込まれており、新しいリリースが公開されるとターミナル下部で自動通知されます。手動での確認やアップデートも可能です：
+
+```bash
+# 現在のバージョンを確認し、更新をチェック
+git air version
+
+# 最新バージョンへ一括アップデート
+git air update
+```
+
+---
+
 ## ⚙️ 設定の優先順位
 
-1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
-2. **環境変数** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`)
+1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`, `--lang`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
+2. **環境変数** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`, `GIT_AIR_COMMIT_LANG`)
 3. **プロジェクト個別設定** (リポジトリ直下の `./config.yaml` または `./.git-air.yaml`)
 4. **グローバル設定** (`~/.git-air/config.yaml`)
 
@@ -249,6 +250,9 @@ model: "gemini-3.7-flash"
 # カスタム Token 料金設定 (任意、単位: 米ドル / 1M Tokens)
 # price_input: 0.75
 # price_output: 3.75
+
+# AI コミットメッセージ言語設定 (任意: auto, zh, en, ja, ko)
+# commit_lang: "auto"
 ```
 
 ---

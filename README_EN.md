@@ -211,6 +211,20 @@ git air hook uninstall
 
 ---
 
+### 5. Version Check & One-Click Upgrade (`git air update`)
+
+`git-air` comes with **lightweight 24-hour background update detection** and alerts you in the terminal whenever a new release is available. You can also manually check or upgrade anytime:
+
+```bash
+# Check current version and check for updates
+git air version
+
+# One-click upgrade to the latest release
+git air update
+```
+
+---
+
 ## ⚙️ Configuration Hierarchy
 
 `git-air` searches for configurations in the following priority order:

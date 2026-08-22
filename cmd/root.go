@@ -10,6 +10,7 @@ import (
 	"github.com/unclesam-ly/git-air/internal/llm"
 	"github.com/unclesam-ly/git-air/internal/reviewer"
 	"github.com/unclesam-ly/git-air/internal/ui"
+	"github.com/unclesam-ly/git-air/internal/updater"
 )
 
 var rootCmd = &cobra.Command{
@@ -20,6 +21,9 @@ var rootCmd = &cobra.Command{
 	Args: cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
+
+		// 后台非阻塞异步检查新版本
+		updateCh := updater.CheckAsync()
 
 		// 1. 检查并获取 Diff
 		if flagCached, _ := cmd.Flags().GetBool("cached"); flagCached {
@@ -96,7 +100,16 @@ var rootCmd = &cobra.Command{
 
 		ui.PrintFooter()
 
-		// 8. 门禁阻断检测 (Pre-commit 拦截逻辑)
+		// 8. 检查新版本提醒（非阻塞）
+		select {
+		case info := <-updateCh:
+			if info != nil {
+				ui.PrintUpdateBanner(info.CurrentVersion, info.LatestVersion, info.ReleaseURL)
+			}
+		default:
+		}
+
+		// 9. 门禁阻断检测 (Pre-commit 拦截逻辑)
 		outText := reviewOutput.String()
 		hasBlocker := strings.Contains(outText, "[BLOCKER]") || strings.Contains(outText, "[CRITICAL]")
 		hasReject := strings.Contains(outText, "[REJECT]")

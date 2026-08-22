@@ -52,6 +52,19 @@ func PrintUsage(inputTokens, outputTokens int, costUSD float64) {
 	)
 }
 
+// PrintUpdateBanner 打印新版本升级提醒卡片
+func PrintUpdateBanner(currentVer, latestVer, releaseURL string) {
+	fmt.Println()
+	fmt.Println(colorYellow + "┌─────────────────────────────────────────────────────────────┐" + colorReset)
+	fmt.Printf(colorYellow+"│"+colorReset+"  🚀 %sgit-air 新版本发布: %s%s%s → %s%s%s\n",
+		colorBold, colorGray, currentVer, colorReset,
+		colorGreen, latestVer, colorReset,
+	)
+	fmt.Println(colorYellow + "│" + colorReset + "  运行以下命令一键升级:                                      " + colorYellow + "│" + colorReset)
+	fmt.Printf(colorYellow+"│"+colorReset+"  %sgo install github.com/unclesam-ly/git-air@latest%s          "+colorYellow+"│"+colorReset+"\n", colorCyan, colorReset)
+	fmt.Println(colorYellow + "└─────────────────────────────────────────────────────────────┘" + colorReset)
+}
+
 // PrintError 打印错误信息
 func PrintError(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
