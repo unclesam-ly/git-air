@@ -102,10 +102,14 @@ func CheckUpdate(force bool) *UpdateInfo {
 
 	client := &http.Client{Timeout: httpTimeout}
 	resp, err := client.Do(req)
-	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+	if err != nil || resp == nil {
 		return nil
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
 
 	var release struct {
 		TagName string `json:"tag_name"`
