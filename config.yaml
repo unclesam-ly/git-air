@@ -38,3 +38,6 @@ custom_prompt: ""
 # 若你的中转平台价格有变或使用私有计费，可在此自定义覆盖：
 # price_input: 0.75    # 每 1M 输入 Token 美元单价
 # price_output: 3.75   # 每 1M 输出 Token 美元单价
+
+# AI Commit Message 生成语言 (可选，默认 "auto" 自动跟随系统语言，可选: zh, en, ja, ko)
+commit_lang: "auto"

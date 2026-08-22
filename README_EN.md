@@ -48,6 +48,7 @@ Completely isolated from your chat history, it acts like a **grumpy but sharp se
 - 🛡️ **Smart Noise Reduction**: Automatically strips out `go.sum`, `package-lock.json`, `*.pb.go`, and lockfiles to save tokens and eliminate review loops.
 - 🎯 **Strict Senior Architect Persona**: Zero corporate fluff. Directly flags concurrency deadlocks, SQL injections, nil dereferences, and resource leaks with copy-paste code patches.
 - 📊 **Real-time Token & Cost Estimation**: Accurately tracks prompt/completion token consumption with built-in official pricing rates (local offline models automatically marked free).
+- ✨ **AI Commit Message Generator**: Automatically generates clean, standardized Conventional Commits messages with multi-language support (English, Japanese, Korean, Chinese).
 - 📋 **Team Rules Support (`.airules`)**: Drop an `.airules` file in your repo root, and the AI will prioritize your team-specific guidelines.
 - 🪝 **One-Click Pre-commit Hook**: Mounts as a local Git hook in one command to block dangerous bugs before code is committed.
 
@@ -174,7 +175,26 @@ git air --provider deepseek --model deepseek-chat
 
 ---
 
-### 3. One-Click Git Pre-commit Hook
+### 3. AI-Powered Commit Message Generation (`git air msg`)
+
+Struggling to write concise commit messages? `git-air` inspects your staged changes and crafts a clean Conventional Commits message with **automatic language detection**:
+
+```bash
+# 1. Generate based on your system locale & interactively commit
+git air msg
+
+# 2. Explicitly specify target language (e.g. English, Japanese, Korean)
+git air msg -l en
+git air msg -l ja
+git air msg -l ko
+
+# 3. Generate and directly commit without confirmation
+git air msg -c
+```
+
+---
+
+### 4. One-Click Git Pre-commit Hook
 
 Install the hook inside any Git repository:
 ```bash
@@ -194,8 +214,8 @@ git air hook uninstall
 ## ⚙️ Configuration Hierarchy
 
 `git-air` searches for configurations in the following priority order:
-1. **CLI Flags** (`--key`, `--model`, `--provider`, `--prompt`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
-2. **Environment Variables** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`)
+1. **CLI Flags** (`--key`, `--model`, `--provider`, `--prompt`, `--lang`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
+2. **Environment Variables** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`, `GIT_AIR_COMMIT_LANG`)
 3. **Project Config** (`./config.yaml` or `./.git-air.yaml` in repo root)
 4. **Global User Config** (`~/.git-air/config.yaml`)
 
@@ -215,6 +235,9 @@ model: "gemini-3.7-flash"
 # Custom Token Pricing (Optional, in USD per 1M tokens)
 # price_input: 0.75
 # price_output: 3.75
+
+# AI Commit Message Language (Optional: auto, zh, en, ja, ko)
+# commit_lang: "auto"
 ```
 
 ---

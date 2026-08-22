@@ -12,13 +12,14 @@ import (
 
 // AppConfig 全局配置结构体
 type AppConfig struct {
-	Provider     string  `yaml:"provider"`               // gemini, deepseek, ollama, openai, custom
-	APIKey       string  `yaml:"api_key"`                // API Key
-	BaseURL      string  `yaml:"base_url"`               // 自定义请求地址
-	Model        string  `yaml:"model"`                  // 模型名称
-	CustomPrompt string  `yaml:"custom_prompt"`          // 用户自定义的 Base System Prompt
-	PriceInput   float64 `yaml:"price_input,omitempty"`  // 自定义输入单价 (每 1M tokens 美元，可选)
-	PriceOutput  float64 `yaml:"price_output,omitempty"` // 自定义输出单价 (每 1M tokens 美元，可选)
+	Provider     string  `yaml:"provider"`                // gemini, deepseek, ollama, openai, custom
+	APIKey       string  `yaml:"api_key"`                 // API Key
+	BaseURL      string  `yaml:"base_url"`                // 自定义请求地址
+	Model        string  `yaml:"model"`                   // 模型名称
+	CustomPrompt string  `yaml:"custom_prompt"`           // 用户自定义的 Base System Prompt
+	PriceInput   float64 `yaml:"price_input,omitempty"`   // 自定义输入单价 (每 1M tokens 美元，可选)
+	PriceOutput  float64 `yaml:"price_output,omitempty"`  // 自定义输出单价 (每 1M tokens 美元，可选)
+	CommitLang   string  `yaml:"commit_lang,omitempty"`   // Commit Message 生成语言 (auto, zh, en, ja, ko 等)
 }
 
 func getConfigPath() (string, error) {
@@ -77,6 +78,9 @@ func LoadConfig() (*AppConfig, error) {
 	if envBaseURL := os.Getenv("GIT_AIR_BASE_URL"); envBaseURL != "" {
 		cfg.BaseURL = envBaseURL
 	}
+	if envLang := os.Getenv("GIT_AIR_COMMIT_LANG"); envLang != "" {
+		cfg.CommitLang = envLang
+	}
 
 	return cfg, nil
 }
@@ -104,6 +108,7 @@ var configSetCmd = &cobra.Command{
 	Short: "设置全局配置项",
 	Example: `  git air config set --provider gemini --key YOUR_KEY
   git air config set --provider deepseek --key YOUR_KEY --model deepseek-chat
+  git air config set --commit-lang ja
   git air config set --provider ollama --model qwen2.5-coder`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := LoadConfig()
@@ -133,6 +138,9 @@ var configSetCmd = &cobra.Command{
 		}
 		if po, _ := cmd.Flags().GetFloat64("price-output"); po > 0 {
 			cfg.PriceOutput = po
+		}
+		if cl, _ := cmd.Flags().GetString("commit-lang"); cl != "" {
+			cfg.CommitLang = cl
 		}
 		if err := SaveConfig(cfg); err != nil {
 			ui.PrintError("保存配置失败: %v", err)
@@ -168,6 +176,11 @@ var configGetCmd = &cobra.Command{
 			hasPrompt = "是 (已自定义)"
 		}
 		fmt.Printf("CustomPrompt:  %s\n", hasPrompt)
+		commitLang := "auto (自动识别系统语言)"
+		if cfg.CommitLang != "" {
+			commitLang = cfg.CommitLang
+		}
+		fmt.Printf("CommitLang:    %s\n", commitLang)
 		if cfg.PriceInput > 0 || cfg.PriceOutput > 0 {
 			fmt.Printf("CustomPrice:   输入 $%.4f/1M, 输出 $%.4f/1M (已自定义覆盖)\n", cfg.PriceInput, cfg.PriceOutput)
 		} else {
@@ -184,6 +197,7 @@ func init() {
 	configSetCmd.Flags().String("prompt", "", "自定义 Base System Prompt")
 	configSetCmd.Flags().Float64("price-input", 0, "自定义每 1M 输入 Token 美元价格")
 	configSetCmd.Flags().Float64("price-output", 0, "自定义每 1M 输出 Token 美元价格")
+	configSetCmd.Flags().String("commit-lang", "", "Commit Message 语言 (auto, zh, en, ja, ko 等)")
 
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configGetCmd)

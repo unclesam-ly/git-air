@@ -49,6 +49,7 @@
 - 🛡️ **智能降噪过滤**：自动剥离 `go.sum`、`package-lock.json`、`*.pb.go`、`*.gen.go` 等锁文件与自动生成代码，省 Token、防死循环。
 - 🎯 **严谨架构师准则**：直奔主题，聚焦并发竞态、死锁、SQL 注入、空指针、资源泄露，并直接提供修复参考代码。
 - 📊 **Token 消耗与费用实时估算**：实时捕获并统计输入/输出 Token 消耗，内置 2026 最新官方定价表精准核算每次审查成本（本地离线模型自动标注免费）。
+- ✨ **AI 智能 Commit Message**：一键根据代码变更生成规范的 Conventional Commits 提交说明，支持**中/英/日/韩**等多语言自适应。
 - 📋 **团队规范适配（`.airules`）**：在项目根目录放置 `.airules`，AI 自动加载团队专属架构规范并最高优先级执行。
 - 🪝 **一键 Pre-commit 钩子**：一行命令挂载 Git 提交前自动拦截，在代码上库前把好第一道质量关。
 
@@ -175,7 +176,28 @@ git air --provider deepseek --model deepseek-chat
 
 ---
 
-### 3. 一键安装 Git Pre-commit 拦截钩子
+### 3. AI 智能生成规范 Commit Message (`git air msg`)
+
+写代码一时爽，写 Commit 抓耳挠腮？`git-air` 会根据你的暂存区改动，自动生成符合国际 Conventional Commits 规范的提交说明，并支持**多语言智能自适应**：
+
+```bash
+# 1. 自动根据系统语言生成并交互式确认提交
+git air msg
+
+# 2. 生成英文提交说明（适合开源或国际化项目）
+git air msg -l en
+
+# 3. 生成日语 / 韩语提交说明
+git air msg -l ja
+git air msg -l ko
+
+# 4. 生成后无需确认直接执行 git commit
+git air msg -c
+```
+
+---
+
+### 4. 一键安装 Git Pre-commit 拦截钩子
 
 在你的 Git 项目根目录下执行：
 ```bash
@@ -195,8 +217,8 @@ git air hook uninstall
 ## ⚙️ 配置文件说明
 
 `git-air` 支持多层配置覆盖，优先级从高到低为：
-1. **命令行 Flags**（如 `--key`, `--model`, `--provider`, `--strict`, `--no-block`）
-2. **环境变量**（`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`）
+1. **命令行 Flags**（如 `--key`, `--model`, `--provider`, `--lang`, `--strict`, `--no-block`）
+2. **环境变量**（`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`, `GIT_AIR_COMMIT_LANG`）
 3. **项目级配置**（当前 Git 项目根目录下的 `config.yaml` 或 `.git-air.yaml`）
 4. **全局用户配置**（`~/.git-air/config.yaml`）
 
@@ -217,9 +239,12 @@ model: "gemini-3.7-flash"
 # 自定义基础提示词 (可选，留空则使用默认资深架构师准则)
 # custom_prompt: ""
 
-# 自定义模型单价 (可选，单位: 美元/1M Tokens，用于精准核算自定义中转或企业私有接口费用)
+# 自定义模型单价 (可选，单位: 美元/1M Tokens)
 # price_input: 0.75
 # price_output: 3.75
+
+# AI Commit Message 生成语言 (可选: auto, zh, en, ja, ko)
+# commit_lang: "auto"
 ```
 
 ---

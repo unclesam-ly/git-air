@@ -48,6 +48,7 @@ GitHubなどのCI/CD上で動作するボットも優秀ですが、**`git-air` 
 - 🛡️ **スマートなノイズ除去**：`go.sum` や `package-lock.json`、自動生成された `*.pb.go` を自動除外。Token消費を抑え、思考ループを防ぎます。
 - 🎯 **厳格なシニアエンジニア基準**：お世辞や無駄口は一切なし。並行処理の競合、デッドロック、SQLインジェクション、NULLポインタ、リソースリークを指摘し、具体的な修正コードを直接提示します。
 - 📊 **Token消費量と費用のリアルタイム見積もり**：入出力Token数を正確に集計し、各社最新の公式料金表に基づいて実行コストを即座に計算（ローカル完全オフラインモデルは無料表示）。
+- ✨ **AI コミットメッセージ自動生成**：変更差分から Conventional Commits 準拠の高品質なメッセージを生成（**日本語・英語・韓国語・中国語**に自動適応）。
 - 📋 **チーム規約の読み込み（`.airules`）**：リポジトリ直下に `.airules` を配置するだけで、チーム固有のアーキテクチャ規約を最優先で適用。
 - 🪝 **ワンクリックで Pre-commit フック化**：コマンド1発でGitフックとして登録。危険なコードのコミットを未然にブロックします。
 
@@ -64,46 +65,80 @@ $ git air
 ユーザー認証ハンドラーに Redis キャッシュ層を追加し、Context のタイムアウト伝播を修正。
 
 #### 詳細レビュー結果
-- [BLOCKER] internal/service/user.go:45 - 重大なセキュリティ脆弱性: ループ内で生SQL文字列を直接結合しています。SQLインジェクションのリスクがあります。
-  // 推奨修正コード:
-  db.Where("username = ?", inputName).First(&user)
+- [BLOCKER] internal/service/user.go:45 - 重大なセキュリティ�# 特定のファイルのみをレビュー
+git air internal/service/chat.go
 
-- [WARNING] internal/service/user.go:82 - 潜在的リスク: Redis 接続エラーを握りつぶしています。キャッシュ障害時にDBへ負荷が集中します。
-
-- [WARNING] internal/service/user.go:103 - 並行処理の欠陥: 早期リターン時に Mutex の Unlock を忘れています（Mutex Leak）。デッドロックの危険性があります。
-
-#### 結論
-- 判定: [REJECT]
-- スコア: 60 / 100
-
-📊 Token: 入力 1,243 / 出力 412 | ≈ $0.0025
-─────────────────────────────────────────────────────────────────
+# 一時的にモデルやProviderを指定して実行
+git air --provider deepseek --model deepseek-chat
 ```
 
 ---
 
-## 📦 インストール
+### 3. AI コミットメッセージ自動生成 (`git air msg`)
 
-### 方法 1: Go Install（推奨）
-```bash
-go install github.com/unclesam-ly/git-air@latest
-```
+コミットメッセージの作成に悩む必要はもうありません。`git-air` がステージングされた差分を分析し、Conventional Commits 準拠のメッセージを**多言語自動適応**で生成します：
 
-### 方法 2: ソースコードからビルド
 ```bash
-git clone https://github.com/unclesam-ly/git-air.git
-cd git-air
-go build -o git-air .
-sudo mv git-air /usr/local/bin/
+# 1. システム言語を自動検出して生成 & 対話型コミット
+git air msg
+
+# 2. 英語で生成（オープンソース・国際プロジェクト向け）
+git air msg -l en
+
+# 3. 日本語 / 韓国語で生成
+git air msg -l ja
+git air msg -l ko
+
+# 4. 確認なしで直接 git commit を実行
+git air msg -c
 ```
 
 ---
 
-## 🚀 クイックスタート
+### 4. ワンタッチで Pre-commit フックを登録
 
-### 1. モデルと API Key の設定
+Git リポジトリ直下で以下を実行：
+```bash
+git air hook install
+```
+- **コミット自動ブロック機能**：レビューで `[BLOCKER]` 重大欠陥や `[REJECT]` 判定が検出された場合、`git-air` は非ゼロの終了コードで**コミット（`git commit`）を自動的に中断・ブロック**します！
+- **厳格モード (`--strict`)**：`[WARNING]` 警告でもコミットをブロックしたい場合は `git air --strict` を使用；
+- **一時的なブロック解除**：緊急でコミットを強制したい場合は、Git 標準の `git commit --no-verify` または `git air --no-block` を付与します。
 
-`git-air` は国内外の主要LLMのエンドポイントと推奨モデルを標準プリセットしています。`--provider` を指定するだけで簡単に切り替えられます：
+フックを解除する場合：
+```bash
+git air hook uninstall
+```
+
+---
+
+## ⚙️ 設定の優先順位
+
+1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`, `--lang`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
+2. **環境変数** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`, `GIT_AIR_COMMIT_LANG`)
+3. **プロジェクト個別設定** (リポジトリ直下の `./config.yaml` または `./.git-air.yaml`)
+4. **グローバル設定** (`~/.git-air/config.yaml`)
+
+### `config.yaml` 設定ファイル例：
+```yaml
+# プロバイダー: gemini, claude, grok, deepseek, qwen, zhipu, moonshot, siliconflow, ollama, openai, custom
+provider: "gemini"
+api_key: "YOUR_API_KEY_HERE"
+model: "gemini-3.7-flash"
+
+# カスタム API エンドポイント (任意)
+# base_url: "https://api.deepseek.com/v1"
+
+# カスタム System Prompt (任意)
+# custom_prompt: ""
+
+# カスタム Token 料金設定 (任意、単位: 米ドル / 1M Tokens)
+# price_input: 0.75
+# price_output: 3.75
+
+# AI コミットメッセージ言語設定 (任意: auto, zh, en, ja, ko)
+# commit_lang: "auto"
+```LLMのエンドポイントと推奨モデルを標準プリセットしています。`--provider` を指定するだけで簡単に切り替えられます：
 
 ```bash
 # 1. Google Gemini (推奨: 高速・低コスト)

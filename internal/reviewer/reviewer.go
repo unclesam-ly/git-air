@@ -40,3 +40,25 @@ func (r *Reviewer) Execute(ctx context.Context, diff string, stream bool, onChun
 	result, err := r.client.Review(ctx, systemPrompt, diff)
 	return result, nil, err
 }
+
+// GenerateCommitMsg 根据 Diff 智能生成符合 Conventional Commits 规范的提交信息
+func (r *Reviewer) GenerateCommitMsg(ctx context.Context, diff string, lang string) (string, error) {
+	if strings.TrimSpace(diff) == "" {
+		return "", fmt.Errorf("diff 内容为空，无法生成 Commit Message")
+	}
+
+	targetLang := DetectLanguage(lang)
+	systemPrompt := BuildCommitMsgPrompt(targetLang)
+
+	msg, err := r.client.Review(ctx, systemPrompt, diff)
+	if err != nil {
+		return "", err
+	}
+
+	// 清理多余的代码块标记或前后空白
+	cleanMsg := strings.TrimSpace(msg)
+	cleanMsg = strings.TrimPrefix(cleanMsg, "```gitcommit")
+	cleanMsg = strings.TrimPrefix(cleanMsg, "```")
+	cleanMsg = strings.TrimSuffix(cleanMsg, "```")
+	return strings.TrimSpace(cleanMsg), nil
+}
