@@ -251,6 +251,15 @@ func isReasoningModel(model string) bool {
 		strings.Contains(m, "sol")
 }
 
+// isTemperatureError 检测 API 报错是否由 temperature 参数限制触发
+func isTemperatureError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "temperature") || strings.Contains(msg, "beta-limitations")
+}
+
 // Review 一次性完整返回代码评审结果
 func (c *Client) Review(ctx context.Context, systemPrompt, diff string) (string, error) {
 	temp := float32(0.2)
@@ -268,8 +277,8 @@ func (c *Client) Review(ctx context.Context, systemPrompt, diff string) (string,
 	}
 
 	resp, err := c.client.CreateChatCompletion(ctx, req)
-	// 针对限制了 temperature 的模型，自动降级为 1.0 重试
-	if err != nil && (strings.Contains(strings.ToLower(err.Error()), "temperature") || strings.Contains(strings.ToLower(err.Error()), "beta-limitations")) {
+	// 针对限制了 temperature 的模型，且首次非 1.0 时，自动调整为 1.0 重试
+	if err != nil && req.Temperature != 1.0 && isTemperatureError(err) {
 		req.Temperature = 1.0
 		resp, err = c.client.CreateChatCompletion(ctx, req)
 	}
@@ -420,8 +429,8 @@ func (c *Client) ReviewStream(ctx context.Context, systemPrompt, diff string, on
 	}
 
 	stream, err := c.client.CreateChatCompletionStream(ctx, req)
-	// 针对限制了 temperature 的模型，自动降级为 1.0 重试
-	if err != nil && (strings.Contains(strings.ToLower(err.Error()), "temperature") || strings.Contains(strings.ToLower(err.Error()), "beta-limitations")) {
+	// 针对限制了 temperature 的模型，且首次非 1.0 时，自动调整为 1.0 重试
+	if err != nil && req.Temperature != 1.0 && isTemperatureError(err) {
 		req.Temperature = 1.0
 		stream, err = c.client.CreateChatCompletionStream(ctx, req)
 	}
