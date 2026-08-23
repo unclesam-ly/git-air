@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strings"
 
@@ -21,6 +22,11 @@ var rootCmd = &cobra.Command{
 	Args: cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
+		outputFormat, _ := cmd.Flags().GetString("format")
+		if outputFormat != "text" && outputFormat != "json" {
+			ui.PrintError("不支持的输出格式 %q，可选: text, json", outputFormat)
+			os.Exit(2)
+		}
 
 		// 后台非阻塞异步检查新版本
 		updateCh := updater.CheckAsync()
@@ -76,17 +82,21 @@ var rootCmd = &cobra.Command{
 		// 5. 初始化评审引擎
 		customPrompt, _ := cmd.Flags().GetString("prompt")
 		if customPrompt == "" {
-			customPrompt = cfg.CustomPrompt
+			customPrompt = cfg.CustomReviewerPrompt
 		}
 		rev := reviewer.NewReviewer(llmClient, repoRoot, customPrompt)
 
 		// 6. 打印开场横幅并开始流式评审
-		ui.PrintBanner(cfg.Provider, cfg.Model)
+		if outputFormat == "text" {
+			ui.PrintBanner(cfg.Provider, cfg.Model)
+		}
 		printer := ui.NewStreamPrinter()
 		var reviewOutput strings.Builder
 		_, usage, err := rev.Execute(ctx, diff, true, func(chunk string) {
 			reviewOutput.WriteString(chunk)
-			printer.PrintChunk(chunk)
+			if outputFormat == "text" {
+				printer.PrintChunk(chunk)
+			}
 		})
 		if err != nil {
 			ui.PrintError("\n评审过程中发生错误: %v", err)
@@ -94,16 +104,48 @@ var rootCmd = &cobra.Command{
 		}
 
 		// 7. 打印 Token 消耗统计
-		if usage != nil {
+		if outputFormat == "text" && usage != nil {
 			ui.PrintUsage(usage.InputTokens, usage.OutputTokens, usage.EstimateCost())
 		}
 
-		ui.PrintFooter()
+		if outputFormat == "text" {
+			ui.PrintFooter()
+		}
+		if outputFormat == "json" {
+			report := reviewer.ParseReviewReport(reviewOutput.String())
+			var reportUsage interface{}
+			if usage != nil {
+				reportUsage = struct {
+					InputTokens  int     `json:"input_tokens"`
+					OutputTokens int     `json:"output_tokens"`
+					Model        string  `json:"model,omitempty"`
+					Provider     string  `json:"provider,omitempty"`
+					CostUSD      float64 `json:"cost_usd"`
+				}{
+					InputTokens:  usage.InputTokens,
+					OutputTokens: usage.OutputTokens,
+					Model:        usage.Model,
+					Provider:     cfg.Provider,
+					CostUSD:      usage.EstimateCost(),
+				}
+			}
 
-		// 8. 检查新版本提醒（非阻塞）
+			finalReport := struct {
+				ReviewReport reviewer.ReviewReport `json:"review"`
+				Usage        interface{}           `json:"usage"`
+			}{
+				ReviewReport: report,
+				Usage:        reportUsage,
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(finalReport); err != nil {
+				ui.PrintError("输出 JSON 失败: %v", err)
+			}
+		}
+
+		// 8. 检查新版本提醒（非阻塞读取，仅在 text 模式下展示）
 		select {
 		case info := <-updateCh:
-			if info != nil {
+			if info != nil && outputFormat == "text" {
 				ui.PrintUpdateBanner(info.CurrentVersion, info.LatestVersion, info.ReleaseURL)
 			}
 		default:
@@ -153,4 +195,5 @@ func init() {
 	rootCmd.Flags().Bool("staged", false, "显式审查暂存区（git add）代码")
 	rootCmd.Flags().Bool("strict", false, "严格模式：遇到 WARNING 也会阻断退出")
 	rootCmd.Flags().Bool("no-block", false, "非阻断模式：即使发现 BLOCKER 也不以非零退出码阻断")
+	rootCmd.Flags().String("format", "text", "输出格式: text 或 json")
 }

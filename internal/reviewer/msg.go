@@ -95,3 +95,14 @@ func BuildCommitMsgPrompt(lang string) string {
 %s
 `, langName, exampleSummary, exampleBullet1, exampleBullet2)
 }
+
+// BuildCommitMsgPromptWithCustom 在内置 Conventional Commits 约束基础上追加用户规则。
+// 保留内置约束，避免自定义提示词意外要求模型输出非法提交格式。
+func BuildCommitMsgPromptWithCustom(lang, customPrompt string) string {
+	basePrompt := BuildCommitMsgPrompt(lang)
+	customPrompt = strings.TrimSpace(customPrompt)
+	if customPrompt == "" {
+		return basePrompt
+	}
+	return customPrompt + "\n\n### git-air 内置提交信息约束（必须遵守）：\n" + basePrompt
+}

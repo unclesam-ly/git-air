@@ -56,3 +56,13 @@ func TestBuildCommitMsgPrompt(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildCommitMsgPromptWithCustom(t *testing.T) {
+	prompt := BuildCommitMsgPromptWithCustom("en", "Use a short imperative subject and mention breaking changes explicitly.")
+	if !strings.Contains(prompt, "Use a short imperative subject") {
+		t.Fatal("自定义 Commit Message Prompt 未被合并")
+	}
+	if !strings.Contains(prompt, "Conventional Commits") {
+		t.Fatal("内置 Conventional Commits 约束不应丢失")
+	}
+}

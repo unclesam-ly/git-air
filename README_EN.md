@@ -269,6 +269,9 @@ model: "gemini-3.7-flash"
 # base_url: "https://api.deepseek.com/v1"
 
 # Custom System Prompt (Optional)
+# custom_reviewer_prompt: ""
+# custom_commit_msg_prompt: ""
+# Legacy compatibility field (supported throughout v1.x)
 # custom_prompt: ""
 
 # Custom Token Pricing (Optional, in USD per 1M tokens)
@@ -278,6 +281,34 @@ model: "gemini-3.7-flash"
 # AI Commit Message Language (Optional: auto, zh, en, ja, ko)
 # commit_lang: "auto"
 ```
+
+### Prompt Field Migration
+
+Older versions provided a single `custom_prompt` field. Since `git-air` supports both code review and AI commit-message generation, sharing one prompt can lead to mixed instructions and unclear behavior.
+
+Use separate fields instead:
+
+```yaml
+custom_reviewer_prompt: "Prompt for code review"
+custom_commit_msg_prompt: "Prompt for commit message generation"
+```
+
+The legacy `custom_prompt` field remains compatible for now and is treated as `custom_reviewer_prompt`.
+
+Migration commands:
+
+```bash
+git air config set --reviewer-prompt "Your reviewer prompt"
+git air config set --commit-msg-prompt "Your commit message prompt"
+```
+
+Deprecation timeline:
+
+- `v1.x`: `custom_prompt` remains supported;
+- `v1.1.0`: the field is marked deprecated and migration is recommended;
+- `v2.0.0`: `custom_prompt` will be removed.
+
+This keeps existing configurations working while making the two prompt responsibilities explicit.
 
 ---
 
@@ -318,4 +349,3 @@ secrets.yaml
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE). Contributions, PRs, and issues are welcome!
-

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/unclesam-ly/git-air/internal/security"
 )
 
 var (
@@ -69,7 +71,8 @@ func GetDiff(ctx context.Context, args ...string) (string, error) {
 			return "", err
 		}
 		if strings.TrimSpace(stagedDiff) != "" {
-			return truncateDiffIfNeeded(FilterDiff(stagedDiff, customIgnores...)), nil
+			truncated := truncateDiffIfNeeded(FilterDiff(stagedDiff, customIgnores...))
+			return security.RedactSecrets(truncated), nil
 		}
 		// 2. 如果暂存区为空，回退提取工作区未暂存的修改
 		cmdArgs = []string{}
@@ -82,20 +85,22 @@ func GetDiff(ctx context.Context, args ...string) (string, error) {
 		return "", err
 	}
 
-	filteredDiff := FilterDiff(rawDiff, customIgnores...)
+	truncatedDiff := truncateDiffIfNeeded(FilterDiff(rawDiff, customIgnores...))
+	filteredDiff := security.RedactSecrets(truncatedDiff)
 	if strings.TrimSpace(filteredDiff) == "" {
 		return "", ErrEmptyDiff
 	}
 
-	return truncateDiffIfNeeded(filteredDiff), nil
+	return filteredDiff, nil
 }
 
 func truncateDiffIfNeeded(diff string) string {
 	runes := []rune(diff)
 	if len(runes) > maxDiffSize {
 		runes = runes[:maxDiffSize]
+		return string(runes) + "\n\n[WARNING: 代码变更量过大，已自动截断前 300KB 内容进行评审]"
 	}
-	return string(runes) + "\n\n[WARNING: 代码变更量过大，已自动截断前 300KB 内容进行评审]"
+	return diff
 }
 
 // execGitDiff 执行底层的 git diff 命令

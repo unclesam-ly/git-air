@@ -274,6 +274,9 @@ model: "gemini-3.7-flash"
 # base_url: "https://api.deepseek.com/v1"
 
 # 自定义基础提示词 (可选，留空则使用默认资深架构师准则)
+# custom_reviewer_prompt: ""
+# custom_commit_msg_prompt: ""
+# 旧版兼容字段（v1.x 仍可使用）
 # custom_prompt: ""
 
 # 自定义模型单价 (可选，单位: 美元/1M Tokens)
@@ -283,6 +286,32 @@ model: "gemini-3.7-flash"
 # AI Commit Message 生成语言 (可选: auto, zh, en, ja, ko)
 # commit_lang: "auto"
 ```
+
+### 提示词字段迁移说明
+
+旧版本只有一个通用的 `custom_prompt` 字段。随着 `git-air` 同时支持代码 Review 和 AI Commit Message，两个场景的目标不同，继续共用一个字段容易造成提示词混用和行为不明确。
+
+因此从当前版本开始，建议分别使用：
+
+```yaml
+custom_reviewer_prompt: "用于代码 Review 的提示词"
+custom_commit_msg_prompt: "用于生成 Commit Message 的提示词"
+```
+
+`custom_prompt` 暂时仍然兼容，并会作为 `custom_reviewer_prompt` 使用。迁移方式：
+
+```bash
+git air config set --reviewer-prompt "你的 Reviewer Prompt"
+git air config set --commit-msg-prompt "你的 Commit Message Prompt"
+```
+
+生命周期安排：
+
+- `v1.x`：继续支持 `custom_prompt`；
+- `v1.1.0`：标记为 deprecated，并提示用户迁移；
+- `v2.0.0`：移除 `custom_prompt` 字段。
+
+这是为了避免破坏现有用户配置，同时让两个 Prompt 的职责更加清晰。
 
 ---
 
@@ -323,4 +352,3 @@ secrets.yaml
 ## 📄 开源许可证
 
 本项目采用 [MIT 许可证](LICENSE)。欢迎提交 Issue 与 Pull Request！
-

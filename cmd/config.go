@@ -12,14 +12,17 @@ import (
 
 // AppConfig 全局配置结构体
 type AppConfig struct {
-	Provider     string  `yaml:"provider"`                // gemini, deepseek, ollama, openai, custom
-	APIKey       string  `yaml:"api_key"`                 // API Key
-	BaseURL      string  `yaml:"base_url"`                // 自定义请求地址
-	Model        string  `yaml:"model"`                   // 模型名称
-	CustomPrompt string  `yaml:"custom_prompt"`           // 用户自定义的 Base System Prompt
-	PriceInput   float64 `yaml:"price_input,omitempty"`   // 自定义输入单价 (每 1M tokens 美元，可选)
-	PriceOutput  float64 `yaml:"price_output,omitempty"`  // 自定义输出单价 (每 1M tokens 美元，可选)
-	CommitLang   string  `yaml:"commit_lang,omitempty"`   // Commit Message 生成语言 (auto, zh, en, ja, ko 等)
+	Provider string `yaml:"provider"` // gemini, deepseek, ollama, openai, custom
+	APIKey   string `yaml:"api_key"`  // API Key
+	BaseURL  string `yaml:"base_url"` // 自定义请求地址
+	Model    string `yaml:"model"`    // 模型名称
+	// CustomPrompt 为兼容旧配置保留，读取时会回退到 CustomReviewerPrompt。
+	CustomPrompt          string  `yaml:"custom_prompt,omitempty"`
+	CustomReviewerPrompt  string  `yaml:"custom_reviewer_prompt,omitempty"`
+	CustomCommitMsgPrompt string  `yaml:"custom_commit_msg_prompt,omitempty"`
+	PriceInput            float64 `yaml:"price_input,omitempty"`  // 自定义输入单价 (每 1M tokens 美元，可选)
+	PriceOutput           float64 `yaml:"price_output,omitempty"` // 自定义输出单价 (每 1M tokens 美元，可选)
+	CommitLang            string  `yaml:"commit_lang,omitempty"`  // Commit Message 生成语言 (auto, zh, en, ja, ko 等)
 }
 
 func getConfigPath() (string, error) {
@@ -82,6 +85,11 @@ func LoadConfig() (*AppConfig, error) {
 		cfg.CommitLang = envLang
 	}
 
+	// 兼容旧版本：custom_prompt 等价于 reviewer 提示词。
+	if cfg.CustomReviewerPrompt == "" {
+		cfg.CustomReviewerPrompt = cfg.CustomPrompt
+	}
+
 	return cfg, nil
 }
 
@@ -131,7 +139,15 @@ var configSetCmd = &cobra.Command{
 			cfg.BaseURL = u
 		}
 		if pr, _ := cmd.Flags().GetString("prompt"); pr != "" {
+			// 旧版 --prompt 继续写入旧字段，同时同步新字段，保证 v1.x 行为兼容。
 			cfg.CustomPrompt = pr
+			cfg.CustomReviewerPrompt = pr
+		}
+		if pr, _ := cmd.Flags().GetString("reviewer-prompt"); pr != "" {
+			cfg.CustomReviewerPrompt = pr
+		}
+		if pr, _ := cmd.Flags().GetString("commit-msg-prompt"); pr != "" {
+			cfg.CustomCommitMsgPrompt = pr
 		}
 		if pi, _ := cmd.Flags().GetFloat64("price-input"); pi > 0 {
 			cfg.PriceInput = pi
@@ -171,11 +187,16 @@ var configGetCmd = &cobra.Command{
 			maskedKey = cfg.APIKey[:4] + "..." + cfg.APIKey[len(cfg.APIKey)-4:]
 		}
 		fmt.Printf("APIKey:        %s\n", maskedKey)
-		hasPrompt := "否 (使用默认内置架构师 Prompt)"
-		if cfg.CustomPrompt != "" {
-			hasPrompt = "是 (已自定义)"
+		reviewerPrompt := "否 (使用默认内置架构师 Prompt)"
+		if cfg.CustomReviewerPrompt != "" {
+			reviewerPrompt = "是 (已自定义)"
 		}
-		fmt.Printf("CustomPrompt:  %s\n", hasPrompt)
+		commitPrompt := "否 (使用默认 Commit Message Prompt)"
+		if cfg.CustomCommitMsgPrompt != "" {
+			commitPrompt = "是 (已自定义)"
+		}
+		fmt.Printf("ReviewerPrompt: %s\n", reviewerPrompt)
+		fmt.Printf("CommitMsgPrompt: %s\n", commitPrompt)
 		commitLang := "auto (自动识别系统语言)"
 		if cfg.CommitLang != "" {
 			commitLang = cfg.CommitLang
@@ -195,6 +216,8 @@ func init() {
 	configSetCmd.Flags().StringP("model", "m", "", "模型名称")
 	configSetCmd.Flags().StringP("base-url", "u", "", "自定义 API 地址")
 	configSetCmd.Flags().String("prompt", "", "自定义 Base System Prompt")
+	configSetCmd.Flags().String("reviewer-prompt", "", "自定义代码 Reviewer Prompt")
+	configSetCmd.Flags().String("commit-msg-prompt", "", "自定义 Commit Message Prompt")
 	configSetCmd.Flags().Float64("price-input", 0, "自定义每 1M 输入 Token 美元价格")
 	configSetCmd.Flags().Float64("price-output", 0, "自定义每 1M 输出 Token 美元价格")
 	configSetCmd.Flags().String("commit-lang", "", "Commit Message 语言 (auto, zh, en, ja, ko 等)")

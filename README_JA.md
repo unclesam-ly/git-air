@@ -310,6 +310,9 @@ model: "gemini-3.7-flash"
 # base_url: "https://api.deepseek.com/v1"
 
 # カスタム System Prompt (任意)
+# custom_reviewer_prompt: ""
+# custom_commit_msg_prompt: ""
+# 旧版互換フィールド（v1.x では引き続き使用可能）
 # custom_prompt: ""
 
 # カスタム Token 料金設定 (任意、単位: 米ドル / 1M Tokens)
@@ -319,6 +322,34 @@ model: "gemini-3.7-flash"
 # AI コミットメッセージ言語設定 (任意: auto, zh, en, ja, ko)
 # commit_lang: "auto"
 ```
+
+### Prompt フィールドの移行について
+
+旧バージョンでは `custom_prompt` という共通フィールドのみを使用していました。しかし `git-air` はコード Review と AI Commit Message の両方を扱うため、同じ Prompt を共有すると指示が混在し、動作が分かりにくくなります。
+
+今後は、用途ごとに次のフィールドを使用してください。
+
+```yaml
+custom_reviewer_prompt: "コード Review 用 Prompt"
+custom_commit_msg_prompt: "Commit Message 生成用 Prompt"
+```
+
+旧 `custom_prompt` は当面互換性のためサポートされ、`custom_reviewer_prompt` として扱われます。
+
+移行コマンド：
+
+```bash
+git air config set --reviewer-prompt "Reviewer Prompt"
+git air config set --commit-msg-prompt "Commit Message Prompt"
+```
+
+廃止予定：
+
+- `v1.x`：`custom_prompt` を引き続きサポート；
+- `v1.1.0`：deprecated として案内；
+- `v2.0.0`：`custom_prompt` を削除予定。
+
+既存ユーザーの設定を壊さず、2 つの Prompt の役割を明確にするための変更です。
 
 ---
 

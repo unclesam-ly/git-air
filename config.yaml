@@ -29,8 +29,14 @@ model: "gemini-3.7-flash"
 # 自定义 API 接口地址 (可选，不填默认走对应 Provider 的官方端点)
 # base_url: ""
 
-# 自定义全局评审提示词 (可选，留空则使用内置资深架构师准则)
-custom_prompt: ""
+# 自定义代码 Reviewer 提示词 (可选，留空则使用内置资深架构师准则)
+# 旧字段 custom_prompt 仍兼容，但建议迁移为 custom_reviewer_prompt
+custom_reviewer_prompt: ""
+# 旧版兼容字段（v1.x 仍可使用）
+# custom_prompt: ""
+
+# 自定义 Commit Message 提示词 (可选，追加在内置 Conventional Commits 约束之前)
+custom_commit_msg_prompt: ""
 
 # 自定义模型 Token 计费费率 (可选，单位：美元 / 每 1M Tokens)
 # 默认情况下 git-air 内置了各主流模型官方最新价格表；

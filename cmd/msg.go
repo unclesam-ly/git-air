@@ -87,7 +87,7 @@ var msgCmd = &cobra.Command{
 		fmt.Printf("\033[1;36m[git-air]\033[0m 正在生成 Conventional Commit Message... \033[0;90m(Language: %s / Engine: %s)\033[0m\n", langDesc, cfg.Model)
 		fmt.Println("\033[0;90m" + strings.Repeat("─", 65) + "\033[0m")
 
-		commitMsg, err := rev.GenerateCommitMsg(ctx, diff, lang)
+		commitMsg, err := rev.GenerateCommitMsg(ctx, diff, lang, cfg.CustomCommitMsgPrompt)
 		if err != nil {
 			ui.PrintError("生成 Commit Message 失败: %v", err)
 			return

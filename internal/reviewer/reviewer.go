@@ -42,13 +42,13 @@ func (r *Reviewer) Execute(ctx context.Context, diff string, stream bool, onChun
 }
 
 // GenerateCommitMsg 根据 Diff 智能生成符合 Conventional Commits 规范的提交信息
-func (r *Reviewer) GenerateCommitMsg(ctx context.Context, diff string, lang string) (string, error) {
+func (r *Reviewer) GenerateCommitMsg(ctx context.Context, diff string, lang string, customPrompt string) (string, error) {
 	if strings.TrimSpace(diff) == "" {
 		return "", fmt.Errorf("diff 内容为空，无法生成 Commit Message")
 	}
 
 	targetLang := DetectLanguage(lang)
-	systemPrompt := BuildCommitMsgPrompt(targetLang)
+	systemPrompt := BuildCommitMsgPromptWithCustom(targetLang, customPrompt)
 
 	msg, err := r.client.Review(ctx, systemPrompt, diff)
 	if err != nil {
