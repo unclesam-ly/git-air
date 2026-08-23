@@ -149,6 +149,12 @@ git air config set --price-input 0.75 --price-output 3.75
 
 # 14. Permanently Set Default Commit Message Language (auto, zh, en, ja, ko)
 git air config set --commit-lang en
+
+# 15. Set Dedicated Custom Code Reviewer Prompt (Optional)
+git air config set --reviewer-prompt "You are a principal Go architect focusing on concurrency and memory safety"
+
+# 16. Set Dedicated Custom Commit Message Prompt (Optional)
+git air config set --commit-msg-prompt "Always follow the strict Angular commit conventions"
 ```
 
 Check current configuration (including masked keys and custom rates):

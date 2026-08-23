@@ -149,6 +149,12 @@ git air config set --price-input 0.75 --price-output 3.75
 
 # 14. コミットメッセージのデフォルト言語を永続設定 (任意: auto, zh, en, ja, ko)
 git air config set --commit-lang ja
+
+# 15. コードレビュー専用のカスタムプロンプトを設定 (任意)
+git air config set --reviewer-prompt "並行処理とメモリ安全性を最重要視するGoシニアアーキテクトとしてレビューしてください"
+
+# 16. コミットメッセージ専用のカスタムプロンプトを設定 (任意)
+git air config set --commit-msg-prompt "AngularのConventional Commits規範に厳格に従って生成してください"
 ```
 
 現在の設定を確認（カスタム料金やマスク化Keyを含む）：

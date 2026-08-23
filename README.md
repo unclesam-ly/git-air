@@ -150,6 +150,12 @@ git air config set --price-input 0.75 --price-output 3.75
 
 # 14. 永久设置 Commit Message 默认语言 (可选: auto, zh, en, ja, ko)
 git air config set --commit-lang en
+
+# 15. 配置专属代码审查自定义提示词 (可选)
+git air config set --reviewer-prompt "你是一位严谨的 Go 资深专家，重点关注并发与内存"
+
+# 16. 配置专属 Commit Message 自定义提示词 (可选)
+git air config set --commit-msg-prompt "生成提交信息时，严格使用 Angular 规范"
 ```
 
 查看当前配置状态（含自定义费率与脱敏 Key）：
