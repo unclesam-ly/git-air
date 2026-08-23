@@ -46,12 +46,13 @@
 
 - ⚡ **Git 原生极简体验**：无需改变任何工作习惯，在命令行敲 `git air` 即可秒级唤起。
 - 🧠 **全模型自由接入**：开箱即用预置 **Google Gemini 3.x、Anthropic Claude、xAI Grok、DeepSeek、阿里通义千问、智谱 GLM、月之暗面 Kimi、本地 Ollama、OpenAI** 等全系列模型。
+- 🔒 **本地敏感信息自动脱敏**：在 Diff 发送给大模型前，自动在本地脱敏私钥证书、API Key、Bearer Token、数据库连接串等敏感数据，零泄露风险。
 - 🛡️ **智能降噪过滤**：自动剥离 `go.sum`、`package-lock.json`、`*.pb.go`、`*.gen.go` 等锁文件与自动生成代码，省 Token、防死循环。
 - 🎯 **严谨架构师准则**：直奔主题，聚焦并发竞态、死锁、SQL 注入、空指针、资源泄露，并直接提供修复参考代码。
 - 📊 **Token 消耗与费用实时估算**：实时捕获并统计输入/输出 Token 消耗，内置 2026 最新官方定价表精准核算每次审查成本（本地离线模型自动标注免费）。
 - ✨ **AI 智能 Commit Message**：一键根据代码变更生成规范的 Conventional Commits 提交说明，支持**中/英/日/韩**等多语言自适应。
 - 📋 **团队规范适配（`.airules`）**：在项目根目录放置 `.airules`，AI 自动加载团队专属架构规范并最高优先级执行。
-- 🪝 **一键 Pre-commit 钩子**：一行命令挂载 Git 提交前自动拦截，在代码上库前把好第一道质量关。
+- 🪝 **一键 Pre-commit 钩子**：一行命令挂载 Git 提交前自动拦截（支持原 Hook 备份与链式调用），在代码上库前把好第一道质量关。
 
 ---
 
@@ -175,6 +176,9 @@ git air internal/service/chat.go
 
 # 临时指定模型或 Key 进行评审
 git air --provider deepseek --model deepseek-chat
+
+# 输出结构化 JSON 报告（便于 CI/CD 自动化流水线或脚本消费）
+git air --format json
 ```
 
 ---
@@ -227,10 +231,11 @@ feat(auth): 引入 Redis 缓存并修复 Mutex 死锁隐患
 git air hook install
 ```
 - **自动门禁阻断**：当审查发现 `[BLOCKER]` 严重缺陷或 `[REJECT]` 评审结论时，`git-air` 会自动以非零退出码**直接拦截并阻断本次 `git commit`**，死守代码质量底线！
+- **原 Hook 链式执行**：若仓库原本已有 `pre-commit`，`git-air` 会自动安全备份并在审查放行后**链式调用原有 Hook**，绝不破坏现有工程配置！
 - **严格模式 (`--strict`)**：若希望发现 `[WARNING]` 也强制阻断提交，可使用 `git air --strict`；
 - **临时跳过阻断**：如确需强行提交，可使用 Git 原生命令 `git commit --no-verify` 或附加 `git-air --no-block`。
 
-如需卸载钩子：
+如需卸载钩子并完全恢复原 Hook：
 ```bash
 git air hook uninstall
 ```

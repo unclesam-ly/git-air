@@ -45,12 +45,13 @@ Completely isolated from your chat history, it acts like a **grumpy but sharp se
 
 - ⚡ **Git-Native Simplicity**: No workflow changes needed. Just run `git air` in your terminal for instant feedback.
 - 🧠 **Universal Multi-Model Support**: Pre-configured support for **Google Gemini 3.x, Anthropic Claude, xAI Grok, DeepSeek, Qwen, Zhipu GLM, Moonshot Kimi, Local Ollama, OpenAI**, and any OpenAI-compatible endpoint.
+- 🔒 **Local Secret Redaction**: Automatically masks private keys, API keys, Bearer tokens, and database connection strings before sending diffs to the LLM (zero leakage risk).
 - 🛡️ **Smart Noise Reduction**: Automatically strips out `go.sum`, `package-lock.json`, `*.pb.go`, and lockfiles to save tokens and eliminate review loops.
 - 🎯 **Strict Senior Architect Persona**: Zero corporate fluff. Directly flags concurrency deadlocks, SQL injections, nil dereferences, and resource leaks with copy-paste code patches.
 - 📊 **Real-time Token & Cost Estimation**: Accurately tracks prompt/completion token consumption with built-in official pricing rates (local offline models automatically marked free).
 - ✨ **AI Commit Message Generator**: Automatically generates clean, standardized Conventional Commits messages with multi-language support (English, Japanese, Korean, Chinese).
 - 📋 **Team Rules Support (`.airules`)**: Drop an `.airules` file in your repo root, and the AI will prioritize your team-specific guidelines.
-- 🪝 **One-Click Pre-commit Hook**: Mounts as a local Git hook in one command to block dangerous bugs before code is committed.
+- 🪝 **One-Click Pre-commit Hook**: Mounts as a local Git hook in one command (with automatic backup and chain execution of existing hooks) to block bugs before code is committed.
 
 ---
 
@@ -174,6 +175,9 @@ git air internal/service/chat.go
 
 # Temporarily override provider or model
 git air --provider deepseek --model deepseek-chat
+
+# Output structured JSON report (for CI/CD pipelines and scripts)
+git air --format json
 ```
 
 ---
@@ -226,10 +230,11 @@ Install the hook inside any Git repository:
 git air hook install
 ```
 - **Automated Commit Gate**: When `git-air` flags any `[BLOCKER]` issue or outputs a `[REJECT]` verdict, it automatically exits with a non-zero status code, **directly intercepting and blocking `git commit`**!
+- **Chain Execution of Existing Hooks**: If a `pre-commit` hook already exists, `git-air` automatically backs it up and **chains into your original hook** once review passes, without disrupting existing workflows.
 - **Strict Mode (`--strict`)**: To block commits even on `[WARNING]` issues, use `git air --strict`;
 - **Bypass Interception**: If you urgently need to bypass the check, use standard Git `git commit --no-verify` or pass `git air --no-block`.
 
-To uninstall:
+To uninstall and fully restore your original hook:
 ```bash
 git air hook uninstall
 ```

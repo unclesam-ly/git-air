@@ -45,12 +45,13 @@ GitHubなどのCI/CD上で動作するボットも優秀ですが、**`git-air` 
 
 - ⚡ **Gitネイティブな極上の操作性**：いつもの作業フローを崩さず、ターミナルで `git air` と叩くだけで即座に起動。
 - 🧠 **主要モデルを完全網羅**：**Google Gemini 3.x、Anthropic Claude、xAI Grok、DeepSeek、Qwen、智譜 GLM、Kimi、ローカルOllama、OpenAI** などを設定なしで即座に切り替え可能。
+- 🔒 **ローカルでの機密情報自動マスキング**：LLM への送信前に秘密鍵、API Key、Bearer Token、DB接続文字列などを自動マスキング（情報漏洩リスクゼロ）。
 - 🛡️ **スマートなノイズ除去**：`go.sum` や `package-lock.json`、自動生成された `*.pb.go` を自動除外。Token消費を抑え、思考ループを防ぎます。
 - 🎯 **厳格なシニアエンジニア基準**：お世辞や無駄口は一切なし。並行処理の競合、デッドロック、SQLインジェクション、NULLポインタ、リソースリークを指摘し、具体的な修正コードを直接提示します。
 - 📊 **Token消費量と費用のリアルタイム見積もり**：入出力Token数を正確に集計し、各社最新の公式料金表に基づいて実行コストを即座に計算（ローカル完全オフラインモデルは無料表示）。
 - ✨ **AI コミットメッセージ自動生成**：変更差分から Conventional Commits 準拠の高品質なメッセージを生成（**日本語・英語・韓国語・中国語**に自動適応）。
 - 📋 **チーム規約の読み込み（`.airules`）**：リポジトリ直下に `.airules` を配置するだけで、チーム固有のアーキテクチャ規約を最優先で適用。
-- 🪝 **ワンクリックで Pre-commit フック化**：コマンド1発でGitフックとして登録。危険なコードのコミットを未然にブロックします。
+- 🪝 **ワンクリックで Pre-commit フック化**：コマンド1発でGitフックとして登録（既存フックの自動バックアップ＆チェーン実行に対応）。危険なコードのコミットを未然にブロックします。
 
 ---
 
@@ -60,79 +61,37 @@ GitHubなどのCI/CD上で動作するボットも優秀ですが、**`git-air` 
 $ git air
 
 [git-air] コードレビュー中... (Engine: gemini / gemini-3.7-flash)
-────────────────────────────────# 13. カスタム Token 料金設定 (任意：組み込み料金表を上書き、単位: 米ドル/1M Tokens)
-git air config set --price-input 0.75 --price-output 3.75
+─────────────────────────────────────────────────────────────────
+#### 変更概要
+ユーザー認証ハンドラーに Redis キャッシュ層を追加し、Context のタイムアウト伝播を修正。
 
-# 14. コミットメッセージのデフォルト言語を永続設定 (任意: auto, zh, en, ja, ko)
-git air config set --commit-lang ja
-```
+#### 詳細レビュー結果
+- [BLOCKER] internal/service/user.go:45 - 重大なセキュリティ脆弱性: ループ内で生SQL文字列を直接結合しています。SQLインジェクションのリスクがあります。
+  // 推奨修正コード:
+  db.Where("username = ?", inputName).First(&user)
 
-現在の設定を確認（カスタム料金やマスク化Keyを含む）：
-```bash
-git air config get
+- [WARNING] internal/service/user.go:82 - 潜在的リスク: Redis 接続エラーを握りつぶしています。キャッシュ障害時にDBへ負荷が集中します。
+
+- [WARNING] internal/service/user.go:103 - 並行処理の欠陥: 早期リターン時に Mutex の Unlock を忘れています（Mutex Leak）。デッドロックの危険性があります。
+
+#### 結論
+- 判定: [REJECT]
+- スコア: 60 / 100
+
+📊 Token: 入力 1,243 / 出力 412 | ≈ $0.0025
+─────────────────────────────────────────────────────────────────
 ```
 
 ---
 
-### 2. よく使うレビューコマンド
+## 📦 インストール
 
+### 方法 1: Go Install（推奨）
 ```bash
-# 現在ステージングされた（git add済み）変更をレビュー（デフォルト）
-git air
-
-# 直前のコミット内容をレビュー
-git air HEAD~1
-
-# ブランチ間の差分をレビュー
-git air main..feature-agent
-
-# 特定のファイルのみをレビュー
-git air internal/service/chat.go
-
-# 一時的にモデルやProviderを指定して実行
-git air --provider deepseek --model deepseek-chat
+go install github.com/unclesam-ly/git-air@latest
 ```
 
----
-
-### 3. AI コミットメッセージ自動生成 (`git air msg`)
-
-コミットメッセージの作成に悩む必要はもうありません。`git-air` がコードの変更差分を分析し、Conventional Commits 準拠のメッセージを**多言語自動適応**と**自動ステージング**で生成します：
-
-```bash
-# 1. 基本的な使い方：差分を分析して対話型コミット
-git air msg
-
-# 2. 変更ファイルを自動ステージング（git add 不要）
-git air msg -a
-
-# 3. 単発で出力言語を指定（auto, zh, en, ja, ko）
-git air msg -l en    # 英語（オープンソース・国際プロジェクト向け）
-git air msg -l ja    # 日本語
-git air msg -l ko    # 韓国語
-
-# 4. 最速ワンライナー：自動ステージング + 生成 + 即座にコミット
-git air msg -a -c
-
-# 5. グローバルデフォルト言語を永続設定（毎回 -l を付ける必要がなくなります）
-git air config set --commit-lang ja   # 今後常に日本語で生成
-git air config set --commit-lang en   # 今後常に英語で生成
-git air config set --commit-lang auto # システム言語への自動追従に戻す
-```
-
-**実行イメージ：**
-```text
-$ git air msg -l ja
-[git-air] Conventional Commit Message を生成中... (Language: 日本語 / Engine: gemini-3.7-flash)
-─────────────────────────────────────────────────────────────────
-feat(auth): Redisキャッシュを追加し、Mutexのデッドロックを修正
-
-- ユーザー認証ハンドラーに Redis トークンキャッシュ層を導入
-- 早期リターン時に Mutex の Unlock が漏れる並行処理のバグを修正
-─────────────────────────────────────────────────────────────────
-? このメッセージで直接 git commit を実行しますか？[Y/n]: y
-[SUCCESS] コードのコミットに成功しました！🎉
-```スコードからビルド
+### 方法 2: ソースコードからビルド
 ```bash
 git clone https://github.com/unclesam-ly/git-air.git
 cd git-air
@@ -216,6 +175,9 @@ git air internal/service/chat.go
 
 # 一時的にモデルやProviderを指定して実行
 git air --provider deepseek --model deepseek-chat
+
+# 構造化 JSON レポートを出力（CI/CD パイプラインや自動化スクリプト向け）
+git air --format json
 ```
 
 ---
@@ -268,10 +230,11 @@ Git リポジトリ直下で以下を実行：
 git air hook install
 ```
 - **コミット自動ブロック機能**：レビューで `[BLOCKER]` 重大欠陥や `[REJECT]` 判定が検出された場合、`git-air` は非ゼロの終了コードで**コミット（`git commit`）を自動的に中断・ブロック**します！
+- **既存フックのチェーン実行**：リポジトリに既存の `pre-commit` がある場合、自動的にバックアップされ、レビュー通過後に**元のフックをチェーン実行**します。
 - **厳格モード (`--strict`)**：`[WARNING]` 警告でもコミットをブロックしたい場合は `git air --strict` を使用；
 - **一時的なブロック解除**：緊急でコミットを強制したい場合は、Git 標準の `git commit --no-verify` または `git air --no-block` を付与します。
 
-フックを解除する場合：
+フックを解除し、元のフックを完全復元する場合：
 ```bash
 git air hook uninstall
 ```
@@ -294,7 +257,7 @@ git air update
 
 ## ⚙️ 設定の優先順位
 
-1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`, `--lang`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
+1. **コマンドライン引数** (`--key`, `--model`, `--provider`, `--prompt`, `--lang`, `--format`, `--price-input`, `--price-output`, `--strict`, `--no-block`)
 2. **環境変数** (`GIT_AIR_API_KEY`, `GIT_AIR_PROVIDER`, `GIT_AIR_MODEL`, `GIT_AIR_COMMIT_LANG`)
 3. **プロジェクト個別設定** (リポジトリ直下の `./config.yaml` または `./.git-air.yaml`)
 4. **グローバル設定** (`~/.git-air/config.yaml`)
@@ -309,10 +272,10 @@ model: "gemini-3.7-flash"
 # カスタム API エンドポイント (任意)
 # base_url: "https://api.deepseek.com/v1"
 
-# カスタム System Prompt (任意)
+# カスタムプロンプト設定 (任意)
 # custom_reviewer_prompt: ""
 # custom_commit_msg_prompt: ""
-# 旧版互換フィールド（v1.x では引き続き使用可能）
+# 旧版互換フィールド (v1.xで利用可能)
 # custom_prompt: ""
 
 # カスタム Token 料金設定 (任意、単位: 米ドル / 1M Tokens)
@@ -322,34 +285,6 @@ model: "gemini-3.7-flash"
 # AI コミットメッセージ言語設定 (任意: auto, zh, en, ja, ko)
 # commit_lang: "auto"
 ```
-
-### Prompt フィールドの移行について
-
-旧バージョンでは `custom_prompt` という共通フィールドのみを使用していました。しかし `git-air` はコード Review と AI Commit Message の両方を扱うため、同じ Prompt を共有すると指示が混在し、動作が分かりにくくなります。
-
-今後は、用途ごとに次のフィールドを使用してください。
-
-```yaml
-custom_reviewer_prompt: "コード Review 用 Prompt"
-custom_commit_msg_prompt: "Commit Message 生成用 Prompt"
-```
-
-旧 `custom_prompt` は当面互換性のためサポートされ、`custom_reviewer_prompt` として扱われます。
-
-移行コマンド：
-
-```bash
-git air config set --reviewer-prompt "Reviewer Prompt"
-git air config set --commit-msg-prompt "Commit Message Prompt"
-```
-
-廃止予定：
-
-- `v1.x`：`custom_prompt` を引き続きサポート；
-- `v1.1.0`：deprecated として案内；
-- `v2.0.0`：`custom_prompt` を削除予定。
-
-既存ユーザーの設定を壊さず、2 つの Prompt の役割を明確にするための変更です。
 
 ---
 
