@@ -286,6 +286,29 @@ model: "gemini-3.7-flash"
 # commit_lang: "auto"
 ```
 
+### プロンプト設定フィールドの移行について
+
+旧バージョンでは単一の `custom_prompt` フィールドのみを提供していましたが、`git-air` がコードレビューと AI コミットメッセージ生成の両方に対応したため、2 つのシナリオでプロンプトの目的が異なります。
+
+そのため、現在のバージョン以降はそれぞれ個別のフィールドを使用することを推奨します：
+
+```yaml
+custom_reviewer_prompt: "コードレビュー用のカスタムプロンプト"
+custom_commit_msg_prompt: "コミットメッセージ生成用のカスタムプロンプト"
+```
+
+なお、旧版の `custom_prompt` は引き続き互換性が保たれ、`custom_reviewer_prompt` として自動的に扱われます。CLI からの設定方法：
+
+```bash
+git air config set --reviewer-prompt "あなたの Reviewer Prompt"
+git air config set --commit-msg-prompt "あなたの Commit Message Prompt"
+```
+
+ライフサイクル方針：
+- `v1.x`：`custom_prompt` を継続サポート；
+- `v1.1.0`：非推奨（deprecated）として警告を表示；
+- `v2.0.0`：`custom_prompt` フィールドを完全削除。
+
 ---
 
 ## 📋 チーム規約のカスタマイズ（`.airules`）
